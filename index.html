@@ -442,7 +442,7 @@ function renderLogin() {
         
         <div>
           <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Токен вручную (если есть)</label>
-          <input id="login-token" class="input" value="${esc(cloudToken)}" placeholder="OAuth токен Яндекс.Диска" style="font-family:'JetBrains Mono',monospace;font-size:11px;">
+          <input id="login-token" class="input" value="${esc(cloudToken)}" placeholder="Вставьте ссылку с #access_token=..." style="font-family:'JetBrains Mono',monospace;font-size:11px;">
         </div>
         
         <button id="login-btn" class="btn btn-primary w-full" style="justify-content:center;padding:12px;">Войти в систему</button>
@@ -484,7 +484,20 @@ function bindLogin() {
     
     // Проверяем ручной ввод токена
     if (tokenInput) {
-      const token = tokenInput.value.replace(/[^\x20-\x7E]/g,'').trim();
+      let input = tokenInput.value.trim();
+      
+      // Извлекаем токен из URL если это ссылка
+      let token = input;
+      if (input.includes('access_token=')) {
+        const match = input.match(/access_token=([^&]+)/);
+        if (match) {
+          token = match[1];
+        }
+      }
+      
+      // Очищаем от не-ASCII символов
+      token = token.replace(/[^\x20-\x7E]/g,'').trim();
+      
       if (token && token !== cloudToken) { 
         cloudToken = token; 
         cloudProvider = 'yandex';
@@ -1864,10 +1877,10 @@ function renderSettings() {
           </button>
           
           <details style="margin-top:12px;">
-            <summary style="font-size:11px;color:var(--text3);cursor:pointer;">Или введите токен вручную</summary>
+            <summary style="font-size:11px;color:var(--text3);cursor:pointer;">Или вставьте ссылку с токеном</summary>
             <div class="flex gap-2 mt-2">
-              <input id="set-token" class="input" placeholder="OAuth токен" style="font-family:'JetBrains Mono',monospace;font-size:11px;flex:1;">
-              <button class="btn btn-sm btn-primary" onclick="saveCloudToken()">Сохранить</button>
+              <input id="set-token" class="input" placeholder="Вставьте полную ссылку вида http://...#access_token=..." style="font-family:'JetBrains Mono',monospace;font-size:11px;flex:1;">
+              <button class="btn btn-sm btn-primary" onclick="saveCloudToken()">Извлечь</button>
             </div>
           </details>
         </div>
@@ -1912,15 +1925,30 @@ window.saveClientId = function() {
 };
 
 window.saveCloudToken = function() {
-  const token = $('#set-token').value.replace(/[^\x20-\x7E]/g,'').trim();
-  if (!token) return alert('Введите токен');
+  let input = $('#set-token').value.trim();
+  if (!input) return alert('Вставьте ссылку или токен');
+  
+  // Извлекаем токен из URL если это ссылка
+  let token = input;
+  if (input.includes('access_token=')) {
+    const match = input.match(/access_token=([^&]+)/);
+    if (match) {
+      token = match[1];
+    }
+  }
+  
+  // Очищаем от не-ASCII символов
+  token = token.replace(/[^\x20-\x7E]/g,'').trim();
+  
+  if (!token) return alert('Не удалось извлечь токен из ссылки');
+  
   cloudToken = token;
   cloudProvider = 'yandex';
   localStorage.setItem(YANDEX_TOKEN_KEY, token);
   localStorage.setItem(CLOUD_PROVIDER_KEY, 'yandex');
   syncStatus = 'connected';
   startSync();
-  alert('✅ Токен сохранён');
+  alert('✅ Токен извлечён и сохранён!');
   render();
 };
 

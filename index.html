@@ -185,6 +185,44 @@ tr:hover td { background:var(--bg3); }
 // АИС «Цезарь» — Single-File Edition
 // ═══════════════════════════════════════════════════════════
 
+// ┌─────────────────────────────────────────────────────────┐
+// │  БЛОК КОНФИГУРАЦИИ — НАСТРОЙТЕ ПЕРЕД ИСПОЛЬЗОВАНИЕМ   │
+// └─────────────────────────────────────────────────────────┘
+
+// ── Яндекс.Диск (OAuth Implicit Flow) ──
+// Получите Client ID на https://oauth.yandex.ru/client/new
+// Платформа: Веб-сервисы, Redirect URI: адрес этой страницы
+// Scopes (права): Яндекс.Диск — запись
+var YANDEX_CLIENT_ID = '';  // ← ВСТАВЬТЕ СЮДА Client ID (набор цифр)
+
+// Ключи localStorage — можно оставить как есть
+var YANDEX_TOKEN_KEY = 'caesar_yandex_token';      // где хранить OAuth-токен
+var YANDEX_USER_KEY  = 'caesar_user';              // где хранить имя пользователя
+var YANDEX_LAST_URL_KEY = 'caesar_yandex_last_upload_url'; // для resumable upload
+
+// Адрес, на который Яндекс вернёт после авторизации
+// По умолчанию — текущая страница (автоматически)
+var YANDEX_REDIRECT_URI = window.location.origin + window.location.pathname;
+
+// Путь к файлу с данными на Яндекс.Диске
+var YANDEX_FILE_PATH = 'app:/caesar_data.json';
+
+// Интервал синхронизации с облаком (мс) — 30 секунд
+var YANDEX_SYNC_INTERVAL = 30000;
+
+// ── Общие ключи localStorage ──
+var THEME_KEY = 'caesar_theme';                    // тема оформления (light/dark)
+var DB_KEY = 'caesar_data';                        // основные данные приложения
+var CLOUD_PROVIDER_KEY = 'caesar_cloud_provider';  // выбранный провайдер (local/jsonbin/yandex)
+
+// ── JSONBin.io (альтернативное облако) ──
+var JSONBIN_MASTER_KEY = '';  // ← ИЛИ вставьте сюда X-Master-Key с jsonbin.io
+var JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+
+// ──────────────────────────────────────────────────────────
+// Дальше — код приложения, править НЕ нужно
+// ──────────────────────────────────────────────────────────
+
 // ── Утилиты ──
 const $ = (sel, ctx=document) => ctx.querySelector(sel);
 const $$ = (sel, ctx=document) => [...ctx.querySelectorAll(sel)];
@@ -197,11 +235,6 @@ const safeDiv = (a,b) => b === 0 ? 0 : a/b;
 const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
 
 // ── Хранилище ──
-const DB_KEY = 'caesar_data';
-const USER_KEY = 'caesar_user';
-const TOKEN_KEY = 'caesar_token';
-const THEME_KEY = 'caesar_theme';
-
 const defaultData = {
   users: [],
   directories: [
@@ -223,8 +256,8 @@ const defaultData = {
 };
 
 let data = {...defaultData};
-let currentUser = localStorage.getItem(USER_KEY);
-let cloudToken = localStorage.getItem(TOKEN_KEY) || '';
+let currentUser = localStorage.getItem(YANDEX_USER_KEY);
+let cloudToken = localStorage.getItem(YANDEX_TOKEN_KEY) || '';
 let theme = localStorage.getItem(THEME_KEY) || 'light';
 let activeModule = 'dashboard';
 let syncStatus = cloudToken ? 'connected' : 'disconnected';
@@ -259,12 +292,9 @@ function addNotification(userId, title, message) {
 }
 
 // ── Cloud Sync ──
-// Провайдер: 'jsonbin' или 'yandex'
-let cloudProvider = localStorage.getItem('caesar_cloud_provider') || 'jsonbin';
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+// Провайдер: 'local', 'jsonbin' или 'yandex'
+let cloudProvider = localStorage.getItem(CLOUD_PROVIDER_KEY) || 'jsonbin';
 const BIN_ID_KEY = 'caesar_bin_id';
-const YANDEX_FILE_PATH = 'app:/caesar_data.json';
-const YANDEX_CLIENT_ID_KEY = 'caesar_yandex_client_id';
 
 // ── JSONBin Sync ──
 async function jsonbinUpload() {
@@ -358,7 +388,7 @@ async function cloudDownload() {
 function startSync() {
   if (syncTimer) clearInterval(syncTimer);
   if (cloudToken) {
-    syncTimer = setInterval(() => cloudDownload(), 20000);
+    syncTimer = setInterval(() => cloudDownload(), YANDEX_SYNC_INTERVAL);
     cloudDownload();
   }
 }
@@ -373,8 +403,8 @@ function checkYandexOAuthCallback() {
     if (token) {
       cloudToken = token.replace(/[^\x20-\x7E]/g, '');
       cloudProvider = 'yandex';
-      localStorage.setItem(TOKEN_KEY, cloudToken);
-      localStorage.setItem('caesar_cloud_provider', 'yandex');
+      localStorage.setItem(YANDEX_TOKEN_KEY, cloudToken);
+      localStorage.setItem(CLOUD_PROVIDER_KEY, 'yandex');
       // Убираем токен из URL
       history.replaceState(null, '', window.location.pathname);
       syncStatus = 'connected';
@@ -386,13 +416,13 @@ function checkYandexOAuthCallback() {
 }
 
 function getYandexOAuthUrl() {
-  const clientId = localStorage.getItem(YANDEX_CLIENT_ID_KEY);
+  const clientId = YANDEX_CLIENT_ID || localStorage.getItem('caesar_yandex_client_id');
   if (!clientId) {
     alert('Сначала зарегистрируйте приложение на https://oauth.yandex.ru/client/new и укажите Client ID в настройках');
     return null;
   }
-  // Redirect URI — текущая страница
-  const redirectUri = window.location.origin + window.location.pathname;
+  // Redirect URI — из конфига или текущая страница
+  const redirectUri = YANDEX_REDIRECT_URI || (window.location.origin + window.location.pathname);
   return `https://oauth.yandex.ru/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
@@ -490,10 +520,10 @@ function updateLoginHelp() {
 
 window.setLoginProvider = function(prov) {
   cloudProvider = prov;
-  localStorage.setItem('caesar_cloud_provider', prov);
+  localStorage.setItem(CLOUD_PROVIDER_KEY, prov);
   if (prov === 'local') {
     cloudToken = '';
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(YANDEX_TOKEN_KEY);
     syncStatus = 'disconnected';
   }
   render();
@@ -514,13 +544,13 @@ function bindLogin() {
     const name = nameInput.value.trim();
     if (!name) return;
     currentUser = name;
-    localStorage.setItem(USER_KEY, name);
+    localStorage.setItem(YANDEX_USER_KEY, name);
     if (tokenInput) {
       const token = tokenInput.value.replace(/[^\x20-\x7E]/g,'').trim();
       if (token) { 
         cloudToken = token; 
-        localStorage.setItem(TOKEN_KEY, token); 
-        localStorage.setItem('caesar_cloud_provider', cloudProvider);
+        localStorage.setItem(YANDEX_TOKEN_KEY, token);
+        localStorage.setItem(CLOUD_PROVIDER_KEY, cloudProvider);
         syncStatus='connected'; 
       }
     }
@@ -663,7 +693,7 @@ function bindApp() {
   $('#theme-btn').onclick = () => { theme = theme==='light'?'dark':'light'; localStorage.setItem(THEME_KEY,theme); render(); };
   
   // Logout
-  $('#logout-btn').onclick = () => { if(confirm('Выйти из системы?')){currentUser=null;localStorage.removeItem(USER_KEY);render();} };
+  $('#logout-btn').onclick = () => { if(confirm('Выйти из системы?')){currentUser=null;localStorage.removeItem(YANDEX_USER_KEY);render();} };
   
   // Notifications
   $('#notif-btn').onclick = () => showNotifications();
@@ -1918,7 +1948,7 @@ function renderSettings() {
         <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
         <span class="text-xs" style="color:var(--text3);">${syncStatus==='connected'?'Подключено ('+cloudProvider+')':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка соединения':'Локальный режим (данные только в этом браузере)'}</span>
       </div>
-      ${cloudToken ? `<button class="btn btn-sm btn-danger mt-2" onclick="if(confirm('Отключить облако? Данные останутся локально.')){cloudToken='';localStorage.removeItem('${TOKEN_KEY}');syncStatus='disconnected';if(syncTimer){clearInterval(syncTimer);syncTimer=null;}render();}">Отключить облако</button>` : ''}
+      ${cloudToken ? `<button class="btn btn-sm btn-danger mt-2" onclick="if(confirm('Отключить облако? Данные останутся локально.')){cloudToken='';localStorage.removeItem('${YANDEX_TOKEN_KEY}');syncStatus='disconnected';if(syncTimer){clearInterval(syncTimer);syncTimer=null;}render();}">Отключить облако</button>` : ''}
     </div>
     
     <div class="card mb-4">
@@ -1937,7 +1967,7 @@ function renderSettings() {
           <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;">${esc(currentUser[0]?.toUpperCase())}</div>
           <div><div class="text-sm font-medium" style="color:var(--text);">${esc(currentUser)}</div><div class="text-xs" style="color:var(--text3);">Текущий пользователь</div></div>
         </div>
-        <button class="btn btn-secondary" onclick="if(confirm('Выйти?')){currentUser=null;localStorage.removeItem('${USER_KEY}');render();}">Выйти</button>
+        <button class="btn btn-secondary" onclick="if(confirm('Выйти?')){currentUser=null;localStorage.removeItem('${YANDEX_USER_KEY}');render();}">Выйти</button>
       </div>
     </div>
     
@@ -1954,8 +1984,8 @@ function renderSettings() {
 window.saveCloudToken = function() {
   const token = $('#set-token').value.replace(/[^\x20-\x7E]/g,'').trim();
   cloudToken = token;
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem('caesar_cloud_provider', cloudProvider);
+  localStorage.setItem(YANDEX_TOKEN_KEY, token);
+  localStorage.setItem(CLOUD_PROVIDER_KEY, cloudProvider);
   syncStatus = token ? 'connected' : 'disconnected';
   if (token) startSync();
   else if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
@@ -1964,10 +1994,10 @@ window.saveCloudToken = function() {
 
 window.setCloudProvider = function(prov) {
   cloudProvider = prov;
-  localStorage.setItem('caesar_cloud_provider', prov);
+  localStorage.setItem(CLOUD_PROVIDER_KEY, prov);
   if (prov === 'local') {
     cloudToken = '';
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(YANDEX_TOKEN_KEY);
     syncStatus = 'disconnected';
     if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
   }

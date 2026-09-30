@@ -193,7 +193,7 @@ tr:hover td { background:var(--bg3); }
 // Получите Client ID на https://oauth.yandex.ru/client/new
 // Платформа: Веб-сервисы, Redirect URI: адрес этой страницы
 // Scopes (права): Яндекс.Диск — запись
-var YANDEX_CLIENT_ID = '';  // ← ВСТАВЬТЕ СЮДА Client ID (набор цифр)
+var YANDEX_CLIENT_ID = '0e95dd0b0f9a40b8815c1f13744cbaca';  // ← ВСТАВЬТЕ СЮДА Client ID (набор цифр)
 
 // Ключи localStorage — можно оставить как есть
 var YANDEX_TOKEN_KEY = 'caesar_yandex_token';      // где хранить OAuth-токен
@@ -205,7 +205,7 @@ var YANDEX_LAST_URL_KEY = 'caesar_yandex_last_upload_url'; // для resumable u
 var YANDEX_REDIRECT_URI = window.location.origin + window.location.pathname;
 
 // Путь к файлу с данными на Яндекс.Диске
-var YANDEX_FILE_PATH = 'app:/caesar_data.json';
+var YANDEX_FILE_PATH = 'app:/data.json';
 
 // Интервал синхронизации с облаком (мс) — 30 секунд
 var YANDEX_SYNC_INTERVAL = 30000;
@@ -295,14 +295,6 @@ function addNotification(userId, title, message) {
 // Провайдер: 'local', 'jsonbin' или 'yandex'
 let cloudProvider = localStorage.getItem(CLOUD_PROVIDER_KEY) || 'jsonbin';
 const BIN_ID_KEY = 'caesar_bin_id';
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-const YANDEX_FILE_PATH = 'app:/data.json';
-const YANDEX_CLIENT_ID_KEY = '0e95dd0b0f9a40b8815c1f13744cbaca';
-=======
->>>>>>> 41ac9aa3887186bfe4541c48211e9fd1da257cde
->>>>>>> Stashed changes
 
 // ── JSONBin Sync ──
 async function jsonbinUpload() {

@@ -1,23 +1,1858 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>АИС «Цезарь» — Контур управления стратегическим развитием</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
-      body { font-family: 'Inter', sans-serif; }
-      @media print {
-        .no-print { display: none !important; }
-        .print-only { display: block !important; }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>АИС «Цезарь» — Контур управления стратегическим развитием</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f8fafc; --bg2: #ffffff; --bg3: #f1f5f9;
+  --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+  --border: #e2e8f0; --border2: #cbd5e1;
+  --blue: #3b82f6; --blue2: #dbeafe; --blue3: #1d4ed8;
+  --green: #10b981; --green2: #d1fae5;
+  --red: #ef4444; --red2: #fee2e2;
+  --yellow: #f59e0b; --yellow2: #fef3c7;
+  --purple: #8b5cf6; --purple2: #ede9fe;
+  --orange: #f97316; --orange2: #ffedd5;
+  --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow2: 0 4px 12px rgba(0,0,0,0.1);
+}
+.dark {
+  --bg: #0f172a; --bg2: #1e293b; --bg3: #334155;
+  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
+  --border: #334155; --border2: #475569;
+  --blue2: #1e3a5f; --green2: #064e3b; --red2: #450a0a;
+  --yellow2: #451a03; --purple2: #2e1065; --orange2: #431407;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+input,select,textarea,button { font-family:inherit; font-size:inherit; }
+.icon { width:16px; height:16px; flex-shrink:0; }
+
+/* Layout */
+.app { display:flex; min-height:100vh; }
+.sidebar { width:260px; background:var(--bg2); border-right:1px solid var(--border); position:fixed; top:0; left:0; bottom:0; z-index:30; display:flex; flex-direction:column; transition:transform 0.3s; }
+.sidebar.hidden { transform:translateX(-100%); }
+.main { flex:1; margin-left:260px; transition:margin-left 0.3s; }
+.main.full { margin-left:0; }
+.topbar { position:sticky; top:0; z-index:20; background:var(--bg2); border-bottom:1px solid var(--border); height:56px; display:flex; align-items:center; padding:0 16px; gap:12px; backdrop-filter:blur(12px); }
+.content { padding:20px; padding-bottom:80px; }
+
+/* Components */
+.btn { padding:8px 16px; border-radius:var(--radius); border:none; cursor:pointer; font-weight:500; font-size:14px; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s; }
+.btn-primary { background:var(--blue); color:#fff; }
+.btn-primary:hover { background:var(--blue3); }
+.btn-secondary { background:var(--bg3); color:var(--text2); }
+.btn-secondary:hover { background:var(--border); }
+.btn-danger { background:var(--red2); color:var(--red); }
+.btn-success { background:var(--green); color:#fff; }
+.btn-sm { padding:4px 10px; font-size:12px; border-radius:8px; }
+.input { width:100%; padding:8px 12px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg); color:var(--text); outline:none; transition:border-color 0.15s; }
+.input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); }
+.badge { padding:2px 8px; border-radius:20px; font-size:11px; font-weight:500; display:inline-flex; align-items:center; gap:4px; }
+.badge-blue { background:var(--blue2); color:var(--blue); }
+.badge-green { background:var(--green2); color:var(--green); }
+.badge-red { background:var(--red2); color:var(--red); }
+.badge-yellow { background:var(--yellow2); color:var(--yellow); }
+.badge-gray { background:var(--bg3); color:var(--text2); }
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px; }
+.modal { background:var(--bg2); border-radius:20px; width:100%; max-width:560px; max-height:90vh; overflow:auto; box-shadow:var(--shadow2); }
+.modal-header { padding:16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:between; }
+.modal-body { padding:16px; }
+.modal-footer { padding:16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+
+/* Nav */
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius); cursor:pointer; font-size:14px; color:var(--text2); transition:all 0.15s; width:100%; border:none; background:none; text-align:left; }
+.nav-item:hover { background:var(--bg3); color:var(--text); }
+.nav-item.active { background:var(--blue2); color:var(--blue); font-weight:500; }
+
+/* Grid */
+.grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.flex { display:flex; }
+.flex-col { flex-direction:column; }
+.items-center { align-items:center; }
+.justify-between { justify-content:space-between; }
+.gap-2 { gap:8px; }
+.gap-3 { gap:12px; }
+.gap-4 { gap:16px; }
+.mt-2 { margin-top:8px; }
+.mt-3 { margin-top:12px; }
+.mt-4 { margin-top:16px; }
+.mb-2 { margin-bottom:8px; }
+.mb-3 { margin-bottom:12px; }
+.mb-4 { margin-bottom:16px; }
+.p-2 { padding:8px; }
+.p-3 { padding:12px; }
+.p-4 { padding:16px; }
+.text-sm { font-size:14px; }
+.text-xs { font-size:12px; }
+.text-lg { font-size:18px; }
+.text-xl { font-size:20px; }
+.text-2xl { font-size:24px; }
+.font-bold { font-weight:700; }
+.font-medium { font-weight:500; }
+.text-center { text-align:center; }
+.truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.w-full { width:100%; }
+.hidden { display:none !important; }
+
+/* Kanban */
+.kanban { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+.kanban-col { min-height:200px; }
+.kanban-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:10px; margin-bottom:8px; cursor:grab; transition:box-shadow 0.15s; }
+.kanban-card:hover { box-shadow:var(--shadow2); }
+.kanban-card.dragging { opacity:0.5; }
+
+/* Table */
+.table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th { text-align:left; padding:10px 14px; background:var(--bg3); color:var(--text2); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+td { padding:10px 14px; border-top:1px solid var(--border); }
+tr:hover td { background:var(--bg3); }
+
+/* Mobile */
+.bottom-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--border); z-index:30; height:56px; }
+.bottom-nav-inner { display:flex; align-items:center; justify-content:space-around; height:100%; }
+.bottom-nav-item { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 12px; border-radius:8px; color:var(--text3); cursor:pointer; border:none; background:none; font-size:10px; }
+.bottom-nav-item.active { color:var(--blue); }
+
+/* Status colors */
+.status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.status-green { background:var(--green); }
+.status-yellow { background:var(--yellow); }
+.status-red { background:var(--red); }
+.status-blue { background:var(--blue); }
+.status-gray { background:var(--text3); }
+
+/* Progress bar */
+.progress { width:100%; height:6px; background:var(--bg3); border-radius:3px; overflow:hidden; }
+.progress-bar { height:100%; border-radius:3px; transition:width 0.3s; }
+
+/* Responsive */
+@media (max-width:1199px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main { margin-left:0 !important; }
+  .kanban { grid-template-columns:repeat(2,1fr); }
+  .grid-4 { grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:767px) {
+  .bottom-nav { display:block; }
+  .content { padding-bottom:80px; }
+  .kanban { grid-template-columns:1fr; }
+  .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; }
+  .table-wrap { display:none; }
+  .mobile-cards { display:block !important; }
+  .hide-mobile { display:none !important; }
+}
+
+/* Print */
+@media print {
+  .sidebar,.topbar,.bottom-nav,.no-print { display:none !important; }
+  .main { margin-left:0 !important; }
+  .content { padding:0; }
+  body { background:#fff; color:#000; }
+  .card { border:1px solid #ccc; box-shadow:none; }
+}
+
+/* Animations */
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation:fadeIn 0.2s ease-out; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.pulse { animation:pulse 2s infinite; }
+
+/* Empty state */
+.empty { text-align:center; padding:40px 20px; color:var(--text3); }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// АИС «Цезарь» — Single-File Edition
+// ═══════════════════════════════════════════════════════════
+
+// ── Утилиты ──
+const $ = (sel, ctx=document) => ctx.querySelector(sel);
+const $$ = (sel, ctx=document) => [...ctx.querySelectorAll(sel)];
+const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => crypto.randomUUID ? crypto.randomUUID() : 'id-'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+const today = () => new Date().toISOString().split('T')[0];
+const fmtDate = d => d ? new Date(d).toLocaleDateString('ru') : '—';
+const fmtMoney = n => (n||0).toLocaleString('ru') + ' ₽';
+const safeDiv = (a,b) => b === 0 ? 0 : a/b;
+const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
+
+// ── Хранилище ──
+const DB_KEY = 'caesar_data';
+const USER_KEY = 'caesar_user';
+const TOKEN_KEY = 'caesar_token';
+const THEME_KEY = 'caesar_theme';
+
+const defaultData = {
+  users: [],
+  directories: [
+    {id:'dir-1',name:'Научные исследования',type:'direction'},
+    {id:'dir-2',name:'Образование',type:'direction'},
+    {id:'dir-3',name:'Инновации',type:'direction'},
+    {id:'dir-4',name:'Международное сотрудничество',type:'direction'},
+    {id:'exp-1',name:'Оборудование',type:'expense'},
+    {id:'exp-2',name:'Командировки',type:'expense'},
+    {id:'exp-3',name:'Материалы',type:'expense'},
+    {id:'dt-1',name:'Заявка на грант',type:'docType'},
+    {id:'dt-2',name:'Отчет по гранту',type:'docType'},
+    {id:'dt-3',name:'Представление к стипендии',type:'docType'},
+    {id:'dt-4',name:'Протокол совещания',type:'docType'},
+  ],
+  projects:[], portfolios:[], tasks:[], documents:[], risks:[], milestones:[],
+  grants:[], indicators:[], campaigns:[], meetings:[], decisions:[],
+  logs:[], notifications:[], reportsArchive:[]
+};
+
+let data = {...defaultData};
+let currentUser = localStorage.getItem(USER_KEY);
+let cloudToken = localStorage.getItem(TOKEN_KEY) || '';
+let theme = localStorage.getItem(THEME_KEY) || 'light';
+let activeModule = 'dashboard';
+let syncStatus = cloudToken ? 'connected' : 'disconnected';
+let syncTimer = null;
+let saveTimer = null;
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(DB_KEY);
+    if (saved) data = {...defaultData, ...JSON.parse(saved)};
+  } catch(e) { console.error('Load error:', e); }
+}
+
+function saveData() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(data));
+    } catch(e) { console.error('Save error:', e); }
+  }, 800);
+}
+
+function addLog(action, object, details) {
+  data.logs.unshift({id:uid(), timestamp:new Date().toISOString(), user:currentUser||'system', action, object, details});
+  if (data.logs.length > 500) data.logs = data.logs.slice(0, 500);
+  saveData();
+}
+
+function addNotification(userId, title, message) {
+  data.notifications.unshift({id:uid(), userId, title, message, read:false, createdAt:new Date().toISOString()});
+  saveData();
+}
+
+// ── Cloud Sync (JSONBin) ──
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+const BIN_ID_KEY = 'caesar_bin_id';
+
+async function cloudUpload() {
+  if (!cloudToken) return;
+  syncStatus = 'syncing'; render();
+  try {
+    let binId = localStorage.getItem(BIN_ID_KEY);
+    const payload = JSON.stringify(data);
+    if (binId) {
+      await fetch(`${JSONBIN_URL}/${binId}`, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken}, body:payload});
+    } else {
+      const res = await fetch(JSONBIN_URL, {method:'POST', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken,'X-Bin-Name':'caesar_data'}, body:payload});
+      const j = await res.json();
+      if (j.metadata?.id) { localStorage.setItem(BIN_ID_KEY, j.metadata.id); }
+    }
+    syncStatus = 'connected';
+  } catch(e) { syncStatus = 'error'; console.error('Cloud upload error:', e); }
+  render();
+}
+
+async function cloudDownload() {
+  if (!cloudToken) return;
+  const binId = localStorage.getItem(BIN_ID_KEY);
+  if (!binId) return;
+  try {
+    const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {headers:{'X-Master-Key':cloudToken}});
+    const j = await res.json();
+    if (j.record) { data = {...defaultData, ...j.record}; saveData(); }
+    syncStatus = 'connected';
+  } catch(e) { syncStatus = 'error'; }
+  render();
+}
+
+function startSync() {
+  if (syncTimer) clearInterval(syncTimer);
+  if (cloudToken) {
+    syncTimer = setInterval(() => cloudDownload(), 20000);
+    cloudDownload();
+  }
+}
+
+// ── Рендеринг ──
+function render() {
+  document.documentElement.className = theme === 'dark' ? 'dark' : '';
+  const app = $('#app');
+  if (!currentUser) { app.innerHTML = renderLogin(); bindLogin(); return; }
+  app.innerHTML = renderApp();
+  bindApp();
+}
+
+// ── Login Screen ──
+function renderLogin() {
+  return `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--blue2),var(--purple2));padding:16px;">
+    <div class="card" style="width:100%;max-width:400px;padding:32px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+          <span style="color:#fff;font-size:28px;font-weight:bold;">Ц</span>
+        </div>
+        <h1 style="font-size:22px;font-weight:700;color:var(--text);">АИС «Цезарь»</h1>
+        <p style="color:var(--text3);margin-top:4px;font-size:13px;">Контур управления стратегическим развитием</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Имя пользователя</label>
+          <input id="login-name" class="input" placeholder="Введите ваше имя" autocomplete="off">
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Токен облака (опционально)</label>
+          <input id="login-token" class="input" placeholder="JSONBin API Key" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+        </div>
+        <button id="login-btn" class="btn btn-primary w-full" style="justify-content:center;padding:12px;">Войти в систему</button>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:var(--blue2);border-radius:var(--radius);">
+        <p style="font-size:11px;color:var(--blue);">💡 Система работает локально. Для совместной работы укажите токен JSONBin.io</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindLogin() {
+  const btn = $('#login-btn');
+  const nameInput = $('#login-name');
+  const tokenInput = $('#login-token');
+  
+  const doLogin = () => {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    currentUser = name;
+    localStorage.setItem(USER_KEY, name);
+    const token = tokenInput.value.replace(/[^\x20-\x7E]/g,'').trim();
+    if (token) { cloudToken = token; localStorage.setItem(TOKEN_KEY, token); syncStatus='connected'; }
+    addLog('Вход в систему', 'Система', `Пользователь ${name} вошёл`);
+    startSync();
+    render();
+  };
+  
+  btn.onclick = doLogin;
+  nameInput.onkeydown = e => { if(e.key==='Enter') doLogin(); };
+  tokenInput.onkeydown = e => { if(e.key==='Enter') doLogin(); };
+  nameInput.focus();
+}
+
+// ── Main App ──
+const navItems = [
+  {id:'dashboard',label:'Дашборд',icon:'📊'},
+  {id:'tasks',label:'Задачи',icon:'✅'},
+  {id:'projects',label:'Проекты',icon:'📁'},
+  {id:'documents',label:'Документы',icon:'📄'},
+  {id:'grants',label:'Гранты',icon:'🏆'},
+  {id:'priority2030',label:'Приоритет-2030',icon:'📈'},
+  {id:'scholarships',label:'Стипендии',icon:'🎓'},
+  {id:'meetings',label:'Совещания',icon:'👥'},
+  {id:'reports',label:'Отчёты',icon:'📋'},
+  {id:'admin',label:'Админ',icon:'⚙️'},
+  {id:'settings',label:'Настройки',icon:'🔧'},
+];
+
+function renderApp() {
+  const unread = data.notifications.filter(n => (n.userId===currentUser||n.userId==='all') && !n.read).length;
+  return `
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div style="padding:16px;border-bottom:1px solid var(--border);">
+        <div class="flex items-center gap-3">
+          <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-weight:bold;">Ц</span>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:14px;color:var(--text);">АИС «Цезарь»</div>
+            <div class="flex items-center gap-1" style="font-size:11px;color:var(--text3);">
+              <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
+              <span>${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация':syncStatus==='error'?'Ошибка':'Локально'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:2px;">
+        ${navItems.map(n => `
+          <button class="nav-item ${activeModule===n.id?'active':''}" data-nav="${n.id}">
+            <span>${n.icon}</span><span>${n.label}</span>
+          </button>
+        `).join('')}
+      </nav>
+      <div style="padding:12px;border-top:1px solid var(--border);">
+        <div class="flex items-center gap-2" style="padding:8px;">
+          <div style="width:32px;height:32px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text2);">${esc(currentUser[0]?.toUpperCase())}</div>
+          <span style="flex:1;font-size:13px;color:var(--text2);" class="truncate">${esc(currentUser)}</span>
+          <button id="logout-btn" class="btn btn-sm btn-secondary" title="Выйти">↩</button>
+        </div>
+      </div>
+    </aside>
+    
+    <div class="main" id="main-content">
+      <header class="topbar">
+        <button id="menu-btn" class="btn btn-secondary btn-sm hide-mobile">☰</button>
+        <button id="menu-btn-mobile" class="btn btn-secondary btn-sm" style="display:none;">☰</button>
+        <span class="font-medium hide-mobile" style="color:var(--text);">${navItems.find(n=>n.id===activeModule)?.label||'Дашборд'}</span>
+        <div style="flex:1;"></div>
+        <button id="search-btn" class="btn btn-secondary btn-sm hide-mobile" title="Поиск (Ctrl+K)">🔍</button>
+        <button id="theme-btn" class="btn btn-secondary btn-sm">${theme==='light'?'🌙':'☀️'}</button>
+        <button id="notif-btn" class="btn btn-secondary btn-sm" style="position:relative;">
+          🔔${unread>0?`<span style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--red);color:#fff;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;">${unread>9?'9+':unread}</span>`:''}
+        </button>
+      </div>
+      <div class="content" id="module-content">
+        ${renderModule()}
+      </div>
+    </div>
+    
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        ${[
+          {id:'dashboard',icon:'📊',label:'Главная'},
+          {id:'tasks',icon:'✅',label:'Задачи'},
+          {id:'projects',icon:'📁',label:'Проекты'},
+          {id:'meetings',icon:'👥',label:'Встречи'},
+          {id:'settings',icon:'☰',label:'Меню'},
+        ].map(n => `
+          <button class="bottom-nav-item ${activeModule===n.id?'active':''}" data-nav="${n.id}">
+            <span style="font-size:18px;">${n.icon}</span>
+            <span>${n.label}</span>
+          </button>
+        `).join('')}
+      </div>
+    </nav>
+  </div>
+  <div id="modal-root"></div>`;
+}
+
+function bindApp() {
+  // Navigation
+  $$('[data-nav]').forEach(btn => {
+    btn.onclick = () => {
+      const mod = btn.dataset.nav;
+      if (mod === 'settings' && window.innerWidth < 1024) {
+        $('#sidebar').classList.toggle('open');
+        return;
       }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+      activeModule = mod;
+      render();
+    };
+  });
+  
+  // Menu toggle
+  const menuBtn = $('#menu-btn');
+  const menuBtnMobile = $('#menu-btn-mobile');
+  if (menuBtn) menuBtn.onclick = () => $('#sidebar').classList.toggle('hidden');
+  if (menuBtnMobile) menuBtnMobile.onclick = () => $('#sidebar').classList.toggle('open');
+  
+  // Responsive menu button
+  if (window.innerWidth < 1200) {
+    if(menuBtn) menuBtn.style.display='none';
+    if(menuBtnMobile) menuBtnMobile.style.display='inline-flex';
+  }
+  
+  // Theme
+  $('#theme-btn').onclick = () => { theme = theme==='light'?'dark':'light'; localStorage.setItem(THEME_KEY,theme); render(); };
+  
+  // Logout
+  $('#logout-btn').onclick = () => { if(confirm('Выйти из системы?')){currentUser=null;localStorage.removeItem(USER_KEY);render();} };
+  
+  // Notifications
+  $('#notif-btn').onclick = () => showNotifications();
+  
+  // Search
+  const searchBtn = $('#search-btn');
+  if (searchBtn) searchBtn.onclick = () => showSearch();
+  
+  // Keyboard shortcuts
+  document.onkeydown = e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='k') { e.preventDefault(); showSearch(); }
+    if (e.key==='Escape') closeModal();
+  };
+}
+
+// ── Модули ──
+function renderModule() {
+  switch(activeModule) {
+    case 'dashboard': return renderDashboard();
+    case 'tasks': return renderTasks();
+    case 'projects': return renderProjects();
+    case 'documents': return renderDocuments();
+    case 'grants': return renderGrants();
+    case 'priority2030': return renderPriority2030();
+    case 'scholarships': return renderScholarships();
+    case 'meetings': return renderMeetings();
+    case 'reports': return renderReports();
+    case 'admin': return renderAdmin();
+    case 'settings': return renderSettings();
+    default: return renderDashboard();
+  }
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  const t = today();
+  const overdue = data.tasks.filter(x => x.dueDate && x.dueDate < t && x.status !== 'done');
+  const blocked = data.tasks.filter(x => x.status === 'blocked');
+  const upcoming = data.tasks.filter(x => x.dueDate && x.dueDate >= t && x.dueDate <= new Date(Date.now()+7*86400000).toISOString().split('T')[0] && x.status !== 'done');
+  const critRisks = data.risks.filter(r => r.impact==='critical' && r.status==='open');
+  
+  const alerts = [];
+  if (overdue.length) alerts.push({type:'red',text:`${overdue.length} просроченных задач`});
+  if (blocked.length) alerts.push({type:'yellow',text:`${blocked.length} задач на блоке`});
+  if (critRisks.length) alerts.push({type:'red',text:`${critRisks.length} критических рисков`});
+
+  const stats = [
+    {label:'Проекты',value:data.projects.length,icon:'📁',sub:`${data.projects.filter(p=>p.status==='active').length} активных`,color:'var(--blue)'},
+    {label:'Задачи',value:data.tasks.length,icon:'✅',sub:`${data.tasks.filter(x=>x.status==='done').length} выполнено`,color:'var(--green)'},
+    {label:'Гранты',value:data.grants.length,icon:'🏆',sub:`${data.grants.filter(g=>g.status==='executing').length} исполняется`,color:'var(--purple)'},
+    {label:'Показатели',value:data.indicators.length,icon:'📈',sub:`${data.indicators.filter(i=>i.planValue>0&&(i.factValue/i.planValue)>=0.8).length} в норме`,color:'var(--orange)'},
+  ];
+
+  return `
+    ${alerts.length ? `<div class="mb-4" style="display:flex;flex-direction:column;gap:8px;">
+      ${alerts.map(a=>`<div class="card fade-in" style="padding:10px 14px;display:flex;align-items:center;gap:8px;border-color:${a.type==='red'?'var(--red)':'var(--yellow)'};background:${a.type==='red'?'var(--red2)':'var(--yellow2)'};">
+        <span>⚠️</span><span class="text-sm font-medium" style="color:${a.type==='red'?'var(--red)':'var(--yellow)'};">${a.text}</span>
+      </div>`).join('')}
+    </div>` : ''}
+    
+    <div class="grid-4 mb-4">
+      ${stats.map(s=>`
+        <div class="card">
+          <div style="width:40px;height:40px;background:${s.color};border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px;">${s.icon}</div>
+          <div class="text-2xl font-bold" style="color:var(--text);">${s.value}</div>
+          <div class="text-sm" style="color:var(--text2);">${s.label}</div>
+          <div class="text-xs" style="color:var(--text3);margin-top:2px;">${s.sub}</div>
+        </div>
+      `).join('')}
+    </div>
+    
+    <div class="grid-2">
+      <div class="card">
+        <h3 class="font-medium mb-3" style="color:var(--text);">🕐 Ближайшие 7 дней</h3>
+        ${upcoming.length===0?'<div class="empty"><p class="text-sm">Нет предстоящих задач</p></div>':
+        `<div style="display:flex;flex-direction:column;gap:6px;">
+          ${upcoming.slice(0,5).map(t=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:8px;">
+              <span class="status-dot ${t.priority==='critical'?'status-red':t.priority==='high'?'status-yellow':'status-blue'}"></span>
+              <div style="flex:1;min-width:0;">
+                <div class="text-sm truncate" style="color:var(--text);">${esc(t.title)}</div>
+                <div class="text-xs" style="color:var(--text3);">${esc(t.assignee)} • ${t.dueDate}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+      <div class="card">
+        <h3 class="font-medium mb-3" style="color:var(--text);">📝 Последние действия</h3>
+        ${data.logs.length===0?'<div class="empty"><p class="text-sm">Нет действий</p></div>':
+        `<div style="display:flex;flex-direction:column;gap:6px;">
+          ${data.logs.slice(0,5).map(l=>`
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:var(--bg3);border-radius:8px;">
+              <div style="width:24px;height:24px;background:var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--text2);flex-shrink:0;">${esc(l.user[0]?.toUpperCase())}</div>
+              <div style="flex:1;min-width:0;">
+                <div class="text-sm" style="color:var(--text);">${esc(l.action)}</div>
+                <div class="text-xs" style="color:var(--text3);">${esc(l.user)} • ${fmtDate(l.timestamp)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>
+    </div>
+  `;
+}
+
+// ── Tasks Module ──
+let taskFilter = {status:'all'};
+let mobileKanbanCol = 'backlog';
+
+function renderTasks() {
+  const cols = [
+    {id:'backlog',label:'Бэклог',color:'var(--text3)'},
+    {id:'in_progress',label:'В работе',color:'var(--blue)'},
+    {id:'review',label:'На проверке',color:'var(--yellow)'},
+    {id:'done',label:'Готово',color:'var(--green)'},
+    {id:'blocked',label:'На блоке',color:'var(--red)'},
+  ];
+  const t = today();
+  
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Задачи (${data.tasks.length})</h2>
+      <button class="btn btn-primary" onclick="showTaskForm()">+ Новая задача</button>
+    </div>
+    
+    <!-- Mobile column tabs -->
+    <div class="mb-3" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;">
+      ${cols.map(c=>`
+        <button class="btn btn-sm ${mobileKanbanCol===c.id?'btn-primary':'btn-secondary'}" onclick="mobileKanbanCol='${c.id}';render();" style="white-space:nowrap;display:none;" data-kanban-tab>
+          <span class="status-dot" style="background:${c.color};"></span> ${c.label} (${data.tasks.filter(x=>x.status===c.id).length})
+        </button>
+      `).join('')}
+    </div>
+    
+    <!-- Desktop Kanban -->
+    <div class="kanban hide-mobile">
+      ${cols.map(col => `
+        <div class="kanban-col" data-drop-col="${col.id}" ondragover="event.preventDefault()" ondrop="handleTaskDrop(event,'${col.id}')">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="status-dot" style="background:${col.color};"></span>
+            <span class="text-sm font-medium" style="color:var(--text2);">${col.label}</span>
+            <span class="badge badge-gray">${data.tasks.filter(x=>x.status===col.id).length}</span>
+          </div>
+          <div style="min-height:100px;">
+            ${data.tasks.filter(x=>x.status===col.id).map(task => {
+              const isOverdue = task.dueDate && task.dueDate < t && task.status !== 'done';
+              return `
+              <div class="kanban-card" draggable="true" ondragstart="event.dataTransfer.setData('text','${task.id}')" style="${isOverdue?'border-color:var(--red);':''}">
+                <div class="text-sm font-medium truncate" style="color:var(--text);">${esc(task.title)}</div>
+                ${task.description?`<div class="text-xs mt-2" style="color:var(--text3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(task.description)}</div>`:''}
+                <div class="flex items-center gap-2 mt-2" style="flex-wrap:wrap;">
+                  <span class="text-xs" style="color:${task.priority==='critical'?'var(--red)':task.priority==='high'?'var(--orange)':'var(--text3)'};">${task.priority==='critical'?'🔴':task.priority==='high'?'🟠':'🔵'} ${task.priority}</span>
+                  ${task.assignee?`<span class="text-xs" style="color:var(--text3);">👤 ${esc(task.assignee)}</span>`:''}
+                  ${task.dueDate?`<span class="text-xs" style="color:${isOverdue?'var(--red)':'var(--text3)'};">📅 ${task.dueDate}</span>`:''}
+                </div>
+                ${task.checklist&&task.checklist.length?`<div class="mt-2"><div class="progress"><div class="progress-bar" style="width:${Math.round(task.checklist.filter(c=>c.done).length/task.checklist.length*100)}%;background:var(--green);"></div></div><div class="text-xs mt-1" style="color:var(--text3);">${task.checklist.filter(c=>c.done).length}/${task.checklist.length}</div></div>`:''}
+                <div class="flex gap-2 mt-2" style="padding-top:8px;border-top:1px solid var(--border);">
+                  <button class="btn btn-sm btn-secondary" onclick="showTaskForm('${task.id}')">✏️</button>
+                  <button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.tasks=data.tasks.filter(x=>x.id!=='${task.id}');saveData();render();}">🗑</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    
+    <!-- Mobile: card list -->
+    <div class="card" style="display:none;" data-mobile-task-list>
+      ${data.tasks.length===0?'<div class="empty"><p>Нет задач</p></div>':
+      data.tasks.map(task => {
+        const col = cols.find(c=>c.id===task.status);
+        return `
+        <div style="padding:12px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="showTaskForm('${task.id}')">
+          <div class="flex items-center gap-2">
+            <span class="status-dot" style="background:${col?.color||'var(--text3)'};"></span>
+            <span class="text-sm font-medium" style="color:var(--text);flex:1;">${esc(task.title)}</span>
+          </div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="badge badge-gray">${col?.label||''}</span>
+            <span class="text-xs" style="color:var(--text3);">${esc(task.assignee||'')}</span>
+            ${task.dueDate?`<span class="text-xs" style="color:var(--text3);">${task.dueDate}</span>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+window.handleTaskDrop = function(e, status) {
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text');
+  const task = data.tasks.find(x=>x.id===taskId);
+  if (task) { task.status = status; saveData(); addLog('Статус задачи изменён', task.title, `→ ${status}`); render(); }
+};
+
+window.showTaskForm = function(taskId) {
+  const task = taskId ? data.tasks.find(x=>x.id===taskId) : null;
+  const form = task ? {...task} : {title:'',description:'',status:'backlog',assignee:currentUser||'',projectId:'',grantId:'',dueDate:'',priority:'medium',checklist:[]};
+  
+  showModal(`
+    <div class="modal-header">
+      <h3 class="font-medium" style="color:var(--text);">${task?'Редактировать задачу':'Новая задача'}</h3>
+      <button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label class="text-sm font-medium" style="color:var(--text2);">Название *</label>
+        <input id="tf-title" class="input mt-2" value="${esc(form.title)}" placeholder="Название задачи">
+      </div>
+      <div>
+        <label class="text-sm font-medium" style="color:var(--text2);">Описание</label>
+        <textarea id="tf-desc" class="input mt-2" rows="2" placeholder="Описание">${esc(form.description)}</textarea>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Статус</label>
+          <select id="tf-status" class="input mt-2">
+            <option value="backlog" ${form.status==='backlog'?'selected':''}>Бэклог</option>
+            <option value="in_progress" ${form.status==='in_progress'?'selected':''}>В работе</option>
+            <option value="review" ${form.status==='review'?'selected':''}>На проверке</option>
+            <option value="done" ${form.status==='done'?'selected':''}>Готово</option>
+            <option value="blocked" ${form.status==='blocked'?'selected':''}>На блоке</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Приоритет</label>
+          <select id="tf-priority" class="input mt-2">
+            <option value="low" ${form.priority==='low'?'selected':''}>Низкий</option>
+            <option value="medium" ${form.priority==='medium'?'selected':''}>Средний</option>
+            <option value="high" ${form.priority==='high'?'selected':''}>Высокий</option>
+            <option value="critical" ${form.priority==='critical'?'selected':''}>Критический</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Исполнитель</label>
+          <input id="tf-assignee" class="input mt-2" value="${esc(form.assignee)}">
+        </div>
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Срок</label>
+          <input id="tf-due" type="date" class="input mt-2" value="${form.dueDate||''}">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Проект</label>
+          <select id="tf-project" class="input mt-2">
+            <option value="">—</option>
+            ${data.projects.map(p=>`<option value="${p.id}" ${form.projectId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium" style="color:var(--text2);">Грант</label>
+          <select id="tf-grant" class="input mt-2">
+            <option value="">—</option>
+            ${data.grants.map(g=>`<option value="${g.id}" ${form.grantId===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTask('${taskId||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveTask = function(taskId) {
+  const title = $('#tf-title').value.trim();
+  if (!title) return alert('Введите название');
+  const obj = {
+    title,
+    description: $('#tf-desc').value,
+    status: $('#tf-status').value,
+    priority: $('#tf-priority').value,
+    assignee: $('#tf-assignee').value,
+    dueDate: $('#tf-due').value,
+    projectId: $('#tf-project').value,
+    grantId: $('#tf-grant').value,
+  };
+  if (taskId) {
+    const t = data.tasks.find(x=>x.id===taskId);
+    Object.assign(t, obj);
+    addLog('Задача обновлена', title, '');
+  } else {
+    data.tasks.push({id:uid(), ...obj, createdAt:new Date().toISOString(), createdBy:currentUser||'', checklist:[]});
+    addLog('Создана задача', title, `Исполнитель: ${obj.assignee}`);
+  }
+  saveData(); closeModal(); render();
+};
+
+// ── Projects Module ──
+function renderProjects() {
+  const t = today();
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Проекты (${data.projects.length})</h2>
+      <button class="btn btn-primary" onclick="showProjectForm()">+ Новый проект</button>
+    </div>
+    ${data.projects.length===0?'<div class="card empty"><div class="empty-icon">📁</div><p>Нет проектов. Создайте первый проект.</p></div>':
+    `<div class="grid-3">
+      ${data.projects.map(p => {
+        const pTasks = data.tasks.filter(x=>x.projectId===p.id);
+        const hasOverdue = pTasks.some(x=>x.dueDate&&x.dueDate<t&&x.status!=='done');
+        const hasCritRisk = data.risks.some(r=>r.projectId===p.id&&r.impact==='critical'&&r.status==='open');
+        const health = (hasOverdue||hasCritRisk)?'🔴':(pTasks.some(x=>x.dueDate&&x.dueDate>=t&&x.dueDate<=new Date(Date.now()+7*86400000).toISOString().split('T')[0]&&x.status!=='done')?'🟡':'🟢');
+        const statusColors = {planning:'var(--text3)',active:'var(--blue)',paused:'var(--yellow)',completed:'var(--green)',cancelled:'var(--red)'};
+        const statusLabels = {planning:'Планирование',active:'Активный',paused:'Приостановлен',completed:'Завершён',cancelled:'Отменён'};
+        return `
+        <div class="card" style="cursor:pointer;" onclick="showProjectDetail('${p.id}')">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span style="font-size:18px;">${health}</span>
+              <span class="text-sm font-medium truncate" style="color:var(--text);">${esc(p.name)}</span>
+            </div>
+            <span class="badge" style="background:${statusColors[p.status]};color:#fff;font-size:10px;">${statusLabels[p.status]}</span>
+          </div>
+          ${p.code?`<div class="text-xs" style="color:var(--text3);">${esc(p.code)}</div>`:''}
+          <div class="mt-3">
+            <div class="flex justify-between text-xs mb-1"><span style="color:var(--text3);">Прогресс</span><span style="color:var(--text2);">${p.progress}%</span></div>
+            <div class="progress"><div class="progress-bar" style="width:${p.progress}%;background:${p.progress>=80?'var(--green)':p.progress>=40?'var(--blue)':'var(--yellow)'};"></div></div>
+          </div>
+          <div class="flex items-center gap-3 mt-2 text-xs" style="color:var(--text3);">
+            <span>📅 ${p.endDate||'—'}</span>
+            <span>✅ ${pTasks.length} задач</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`}
+  `;
+}
+
+window.showProjectForm = function(pid) {
+  const p = pid ? data.projects.find(x=>x.id===pid) : null;
+  const form = p ? {...p} : {name:'',code:'',direction:'',status:'planning',manager:currentUser||'',startDate:'',endDate:'',progress:0};
+  const dirs = data.directories.filter(d=>d.type==='direction');
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${p?'Редактировать проект':'Новый проект'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="pf-name" class="input mt-2" value="${esc(form.name)}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Код</label><input id="pf-code" class="input mt-2" value="${esc(form.code)}"></div>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Направление</label>
+        <select id="pf-dir" class="input mt-2"><option value="">—</option>${dirs.map(d=>`<option value="${esc(d.name)}" ${form.direction===d.name?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Статус</label>
+          <select id="pf-status" class="input mt-2">
+            <option value="planning" ${form.status==='planning'?'selected':''}>Планирование</option>
+            <option value="active" ${form.status==='active'?'selected':''}>Активный</option>
+            <option value="paused" ${form.status==='paused'?'selected':''}>Приостановлен</option>
+            <option value="completed" ${form.status==='completed'?'selected':''}>Завершён</option>
+            <option value="cancelled" ${form.status==='cancelled'?'selected':''}>Отменён</option>
+          </select></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Руководитель</label><input id="pf-manager" class="input mt-2" value="${esc(form.manager)}"></div>
+      </div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Дата начала</label><input id="pf-start" type="date" class="input mt-2" value="${form.startDate}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Дата окончания</label><input id="pf-end" type="date" class="input mt-2" value="${form.endDate}"></div>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Прогресс: <span id="pf-prog-val">${form.progress}</span>%</label>
+        <input id="pf-progress" type="range" min="0" max="100" value="${form.progress}" class="input mt-2" style="padding:4px;" oninput="document.getElementById('pf-prog-val').textContent=this.value"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveProject('${pid||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveProject = function(pid) {
+  const name = $('#pf-name').value.trim();
+  if (!name) return alert('Введите название');
+  const obj = {name, code:$('#pf-code').value, direction:$('#pf-dir').value, status:$('#pf-status').value, manager:$('#pf-manager').value, startDate:$('#pf-start').value, endDate:$('#pf-end').value, progress:+$('#pf-progress').value};
+  if (pid) { Object.assign(data.projects.find(x=>x.id===pid), obj); }
+  else { data.projects.push({id:uid(),...obj,createdAt:new Date().toISOString(),createdBy:currentUser||''}); }
+  addLog(pid?'Проект обновлён':'Создан проект', name, '');
+  saveData(); closeModal(); render();
+};
+
+window.showProjectDetail = function(pid) {
+  const p = data.projects.find(x=>x.id===pid);
+  if (!p) return;
+  const pTasks = data.tasks.filter(x=>x.projectId===pid);
+  const pRisks = data.risks.filter(r=>r.projectId===pid);
+  
+  showModal(`
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <span style="font-size:24px;">📁</span>
+        <div><h3 class="font-medium" style="color:var(--text);">${esc(p.name)}</h3><div class="text-xs" style="color:var(--text3);">${esc(p.code)} • ${esc(p.manager)}</div></div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary" onclick="closeModal();showProjectForm('${p.id}')">✏️</button>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="grid-4 mb-4">
+        <div class="card" style="text-align:center;padding:10px;"><div class="text-xl font-bold" style="color:var(--text);">${pTasks.length}</div><div class="text-xs" style="color:var(--text3);">Задач</div></div>
+        <div class="card" style="text-align:center;padding:10px;"><div class="text-xl font-bold" style="color:var(--text);">${pRisks.length}</div><div class="text-xs" style="color:var(--text3);">Рисков</div></div>
+        <div class="card" style="text-align:center;padding:10px;"><div class="text-xl font-bold" style="color:var(--text);">${p.progress}%</div><div class="text-xs" style="color:var(--text3);">Прогресс</div></div>
+        <div class="card" style="text-align:center;padding:10px;"><div class="text-xl font-bold" style="color:var(--text);">${data.milestones.filter(m=>m.projectId===pid&&m.completed).length}</div><div class="text-xs" style="color:var(--text3);">Вех ✓</div></div>
+      </div>
+      <h4 class="text-sm font-medium mb-2" style="color:var(--text2);">Задачи проекта</h4>
+      ${pTasks.length===0?'<p class="text-sm" style="color:var(--text3);">Нет задач</p>':
+      pTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:8px;margin-bottom:4px;">
+        <span class="status-dot ${t.status==='done'?'status-green':t.status==='blocked'?'status-red':'status-blue'}"></span>
+        <span class="text-sm" style="color:var(--text);flex:1;">${esc(t.title)}</span>
+        <span class="text-xs" style="color:var(--text3);">${esc(t.assignee)}</span>
+      </div>`).join('')}
+    </div>
+  `);
+};
+
+// ── Documents Module ──
+function renderDocuments() {
+  const statusEmoji = {draft:'⚪',in_review:'🟡',approved:'🟢',rejected:'🔴'};
+  const statusLabel = {draft:'Черновик',in_review:'На согласовании',approved:'Согласован',rejected:'Отклонён'};
+  
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Документы (${data.documents.length})</h2>
+      <button class="btn btn-primary" onclick="showDocForm()">+ Новый документ</button>
+    </div>
+    ${data.documents.length===0?'<div class="card empty"><div class="empty-icon">📄</div><p>Нет документов</p></div>':
+    `<div style="display:flex;flex-direction:column;gap:8px;">
+      ${data.documents.map(d=>`
+        <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px;">
+          <span style="font-size:24px;">${statusEmoji[d.status]||'⚪'}</span>
+          <div style="flex:1;min-width:0;">
+            <div class="text-sm font-medium truncate" style="color:var(--text);">${esc(d.name)}</div>
+            <div class="text-xs" style="color:var(--text3);">${esc(d.type||'')} • ${esc(d.initiator)} • ${fmtDate(d.createdAt)}</div>
+          </div>
+          <div class="flex gap-2 hide-mobile">
+            ${d.fileUrl?'<span style="color:var(--green);" title="Файл прикреплён">📎</span>':''}
+            <button class="btn btn-sm btn-secondary" onclick="showDocForm('${d.id}')">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.documents=data.documents.filter(x=>x.id!=='${d.id}');saveData();render();}">🗑</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`}
+  `;
+}
+
+window.showDocForm = function(docId) {
+  const d = docId ? data.documents.find(x=>x.id===docId) : null;
+  const form = d ? {...d} : {name:'',type:'',status:'draft',projectId:'',grantId:'',initiator:currentUser||'',fileUrl:''};
+  const docTypes = data.directories.filter(x=>x.type==='docType');
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${d?'Редактировать документ':'Новый документ'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="df-name" class="input mt-2" value="${esc(form.name)}"></div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Тип</label>
+          <select id="df-type" class="input mt-2"><option value="">—</option>${docTypes.map(t=>`<option value="${esc(t.name)}" ${form.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Статус</label>
+          <select id="df-status" class="input mt-2">
+            <option value="draft" ${form.status==='draft'?'selected':''}>Черновик</option>
+            <option value="in_review" ${form.status==='in_review'?'selected':''}>На согласовании</option>
+            <option value="approved" ${form.status==='approved'?'selected':''}>Согласован</option>
+            <option value="rejected" ${form.status==='rejected'?'selected':''}>Отклонён</option>
+          </select></div>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Инициатор</label><input id="df-init" class="input mt-2" value="${esc(form.initiator)}"></div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Ссылка на файл</label><input id="df-file" class="input mt-2" value="${esc(form.fileUrl||'')}" placeholder="URL или загрузите файл"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveDoc('${docId||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveDoc = function(docId) {
+  const name = $('#df-name').value.trim();
+  if (!name) return alert('Введите название');
+  const obj = {name, type:$('#df-type').value, status:$('#df-status').value, initiator:$('#df-init').value, fileUrl:$('#df-file').value};
+  if (docId) { Object.assign(data.documents.find(x=>x.id===docId), obj); }
+  else { data.documents.push({id:uid(),...obj,createdAt:new Date().toISOString()}); }
+  addLog(docId?'Документ обновлён':'Создан документ', name, '');
+  saveData(); closeModal(); render();
+};
+
+// ── Grants Module ──
+function renderGrants() {
+  const total = data.grants.reduce((s,g)=>s+g.amount,0);
+  const spent = data.grants.reduce((s,g)=>s+g.spent,0);
+  const statusLabels = {preparation:'Подготовка',submitted:'Подан',expertise:'Экспертиза',awarded:'Получен',executing:'Исполняется',reporting:'Отчётность',completed:'Завершён',rejected:'Отклонён'};
+  const statusColors = {preparation:'var(--text3)',submitted:'var(--blue)',expertise:'var(--yellow)',awarded:'var(--green)',executing:'var(--blue3)',reporting:'var(--orange)',completed:'var(--green)',rejected:'var(--red)'};
+  
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Гранты (${data.grants.length})</h2>
+      <button class="btn btn-primary" onclick="showGrantForm()">+ Новый грант</button>
+    </div>
+    <div class="grid-4 mb-4">
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Общая сумма</div><div class="text-lg font-bold" style="color:var(--text);">${fmtMoney(total)}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Освоено</div><div class="text-lg font-bold" style="color:var(--green);">${fmtMoney(spent)}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Остаток</div><div class="text-lg font-bold" style="color:var(--blue);">${fmtMoney(total-spent)}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">% освоения</div><div class="text-lg font-bold" style="color:var(--text);">${total>0?Math.round(spent/total*100):0}%</div></div>
+    </div>
+    ${data.grants.length===0?'<div class="card empty"><div class="empty-icon">🏆</div><p>Нет грантов</p></div>':
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      ${data.grants.map(g=>{
+        const pct = g.amount>0?Math.round(g.spent/g.amount*100):0;
+        return `
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <div><div class="text-sm font-medium" style="color:var(--text);">${esc(g.name)}</div><div class="text-xs" style="color:var(--text3);">${esc(g.manager)} • ${g.startDate} — ${g.endDate}</div></div>
+            <span class="badge" style="background:${statusColors[g.status]};color:#fff;">${statusLabels[g.status]}</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div style="flex:1;">
+              <div class="flex justify-between text-xs mb-1"><span style="color:var(--text3);">Освоение</span><span style="color:var(--text2);">${pct}%</span></div>
+              <div class="progress"><div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${pct>90?'var(--red)':pct>60?'var(--yellow)':'var(--green)'};"></div></div>
+            </div>
+            <div style="text-align:right;"><div class="text-sm font-medium" style="color:var(--text);">${fmtMoney(g.spent)}</div><div class="text-xs" style="color:var(--text3);">из ${fmtMoney(g.amount)}</div></div>
+          </div>
+          <div class="flex gap-2 mt-3" style="padding-top:8px;border-top:1px solid var(--border);">
+            <button class="btn btn-sm btn-secondary" onclick="showGrantForm('${g.id}')">✏️ Изменить</button>
+            <button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.grants=data.grants.filter(x=>x.id!=='${g.id}');saveData();render();}">🗑</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`}
+  `;
+}
+
+window.showGrantForm = function(gid) {
+  const g = gid ? data.grants.find(x=>x.id===gid) : null;
+  const form = g ? {...g} : {name:'',status:'preparation',amount:0,spent:0,startDate:'',endDate:'',manager:currentUser||'',stages:[]};
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${g?'Редактировать грант':'Новый грант'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="gf-name" class="input mt-2" value="${esc(form.name)}"></div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Статус</label>
+          <select id="gf-status" class="input mt-2">
+            ${['preparation','submitted','expertise','awarded','executing','reporting','completed','rejected'].map(s=>`<option value="${s}" ${form.status===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Руководитель</label><input id="gf-manager" class="input mt-2" value="${esc(form.manager)}"></div>
+      </div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Сумма (₽)</label><input id="gf-amount" type="number" class="input mt-2" value="${form.amount}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Освоено (₽)</label><input id="gf-spent" type="number" class="input mt-2" value="${form.spent}"></div>
+      </div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Дата начала</label><input id="gf-start" type="date" class="input mt-2" value="${form.startDate}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Дата окончания</label><input id="gf-end" type="date" class="input mt-2" value="${form.endDate}"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveGrant('${gid||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveGrant = function(gid) {
+  const name = $('#gf-name').value.trim();
+  if (!name) return alert('Введите название');
+  const obj = {name, status:$('#gf-status').value, manager:$('#gf-manager').value, amount:+$('#gf-amount').value, spent:+$('#gf-spent').value, startDate:$('#gf-start').value, endDate:$('#gf-end').value};
+  if (gid) { Object.assign(data.grants.find(x=>x.id===gid), obj); }
+  else { data.grants.push({id:uid(),...obj,stages:[],createdAt:new Date().toISOString()}); }
+  addLog(gid?'Грант обновлён':'Создан грант', name, `Сумма: ${obj.amount}`);
+  saveData(); closeModal(); render();
+};
+
+// ── Priority 2030 ──
+function renderPriority2030() {
+  const onTrack = data.indicators.filter(i=>i.planValue>0&&(i.factValue/i.planValue)>=0.8);
+  const behind = data.indicators.filter(i=>i.planValue>0&&(i.factValue/i.planValue)<0.8);
+  const avg = data.indicators.length>0 ? Math.round(data.indicators.reduce((s,i)=>s+(i.planValue>0?(i.factValue/i.planValue)*100:0),0)/data.indicators.length) : 0;
+  
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Приоритет-2030</h2>
+      <button class="btn btn-primary" onclick="showIndicatorForm()">+ Новый показатель</button>
+    </div>
+    <div class="grid-4 mb-4">
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Всего</div><div class="text-xl font-bold" style="color:var(--text);">${data.indicators.length}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">В норме</div><div class="text-xl font-bold" style="color:var(--green);">${onTrack.length}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Отставание</div><div class="text-xl font-bold" style="color:var(--red);">${behind.length}</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xs" style="color:var(--text3);">Ср. выполнение</div><div class="text-xl font-bold" style="color:var(--text);">${avg}%</div></div>
+    </div>
+    ${data.indicators.length===0?'<div class="card empty"><p>Нет показателей</p></div>':
+    `<div class="table-wrap hide-mobile">
+      <table>
+        <thead><tr><th>Показатель</th><th>Ед.</th><th style="text-align:right;">План</th><th style="text-align:right;">Факт</th><th style="text-align:right;">%</th><th>Ответственный</th><th></th></tr></thead>
+        <tbody>
+          ${data.indicators.map(i=>{
+            const pct = i.planValue>0?Math.round(i.factValue/i.planValue*100):0;
+            return `<tr>
+              <td class="font-medium" style="color:var(--text);">${esc(i.name)}</td>
+              <td style="color:var(--text3);">${esc(i.unit)}</td>
+              <td style="text-align:right;color:var(--text2);">${i.planValue}</td>
+              <td style="text-align:right;color:var(--text);font-weight:500;">${i.factValue}</td>
+              <td style="text-align:right;"><span style="color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--red)'};font-weight:500;">${pct>=80?'📈':'📉'} ${pct}%</span></td>
+              <td style="color:var(--text2);">${esc(i.responsible)}</td>
+              <td><button class="btn btn-sm btn-secondary" onclick="showIndicatorForm('${i.id}')">✏️</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="mobile-cards" style="display:none;">
+      ${data.indicators.map(i=>{
+        const pct = i.planValue>0?Math.round(i.factValue/i.planValue*100):0;
+        return `<div class="card mb-2">
+          <div class="flex justify-between items-start">
+            <div><div class="text-sm font-medium" style="color:var(--text);">${esc(i.name)}</div><div class="text-xs" style="color:var(--text3);">${esc(i.responsible)} • ${i.year}</div></div>
+            <span class="text-sm font-bold" style="color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--red)'};">${pct}%</span>
+          </div>
+          <div class="flex gap-4 mt-2 text-xs" style="color:var(--text3);"><span>План: ${i.planValue} ${esc(i.unit)}</span><span>Факт: ${i.factValue} ${esc(i.unit)}</span></div>
+          <div class="flex gap-2 mt-2"><button class="btn btn-sm btn-secondary" onclick="showIndicatorForm('${i.id}')">✏️</button><button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.indicators=data.indicators.filter(x=>x.id!=='${i.id}');saveData();render();}">🗑</button></div>
+        </div>`;
+      }).join('')}
+    </div>`}
+  `;
+}
+
+window.showIndicatorForm = function(iid) {
+  const ind = iid ? data.indicators.find(x=>x.id===iid) : null;
+  const form = ind ? {...ind} : {name:'',unit:'',planValue:0,factValue:0,year:new Date().getFullYear(),responsible:currentUser||''};
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${ind?'Редактировать показатель':'Новый показатель'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="if-name" class="input mt-2" value="${esc(form.name)}"></div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Ед. измерения</label><input id="if-unit" class="input mt-2" value="${esc(form.unit)}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Год</label><input id="if-year" type="number" class="input mt-2" value="${form.year}"></div>
+      </div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">План</label><input id="if-plan" type="number" class="input mt-2" value="${form.planValue}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Факт</label><input id="if-fact" type="number" class="input mt-2" value="${form.factValue}"></div>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Ответственный</label><input id="if-resp" class="input mt-2" value="${esc(form.responsible)}"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveIndicator('${iid||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveIndicator = function(iid) {
+  const name = $('#if-name').value.trim();
+  if (!name) return alert('Введите название');
+  const obj = {name, unit:$('#if-unit').value, planValue:+$('#if-plan').value, factValue:+$('#if-fact').value, year:+$('#if-year').value, responsible:$('#if-resp').value};
+  if (iid) { Object.assign(data.indicators.find(x=>x.id===iid), obj); }
+  else { data.indicators.push({id:uid(),...obj,docIds:[]}); }
+  saveData(); closeModal(); render();
+};
+
+// ── Scholarships ──
+function renderScholarships() {
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Именные стипендии</h2>
+      <button class="btn btn-primary" onclick="showCampaignForm()">+ Новая кампания</button>
+    </div>
+    ${data.campaigns.length===0?'<div class="card empty"><div class="empty-icon">🎓</div><p>Нет кампаний</p></div>':
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      ${data.campaigns.map(c=>`
+        <div class="card">
+          <div class="flex items-start justify-between mb-3">
+            <div><div class="text-sm font-medium" style="color:var(--text);">${esc(c.name)}</div><div class="text-xs" style="color:var(--text3);">${esc(c.type)} • ${c.startDate} — ${c.endDate}</div></div>
+            <span class="badge ${c.status==='active'?'badge-green':c.status==='completed'?'badge-gray':'badge-blue'}">${c.status==='active'?'Активная':c.status==='completed'?'Завершена':'Планирование'}</span>
+          </div>
+          <div class="grid-3 mb-3">
+            <div class="card" style="text-align:center;padding:8px;"><div class="text-lg font-bold" style="color:var(--text);">${c.applications.length}</div><div class="text-xs" style="color:var(--text3);">Заявок</div></div>
+            <div class="card" style="text-align:center;padding:8px;"><div class="text-lg font-bold" style="color:var(--green);">${c.applications.filter(a=>a.status==='approved').length}</div><div class="text-xs" style="color:var(--text3);">Одобрено</div></div>
+            <div class="card" style="text-align:center;padding:8px;"><div class="text-lg font-bold" style="color:var(--text);">${fmtMoney(c.applications.filter(a=>a.status==='approved').reduce((s,a)=>s+(a.amount||0),0))}</div><div class="text-xs" style="color:var(--text3);">Сумма</div></div>
+          </div>
+          ${c.applications.length>0?c.applications.map(a=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:6px;background:var(--bg3);border-radius:8px;margin-bottom:4px;">
+              <span class="status-dot ${a.status==='approved'?'status-green':a.status==='rejected'?'status-red':'status-yellow'}"></span>
+              <span class="text-sm" style="color:var(--text);flex:1;">${esc(a.applicantName)}</span>
+              <span class="text-xs" style="color:var(--text3);">${fmtMoney(a.amount)}</span>
+            </div>
+          `).join(''):''}
+          <div class="flex gap-2 mt-3" style="padding-top:8px;border-top:1px solid var(--border);">
+            <button class="btn btn-sm btn-secondary" onclick="showCampaignForm('${c.id}')">✏️</button>
+            <button class="btn btn-sm btn-secondary" onclick="printOrder('${c.id}')">🖨 Приказ</button>
+            <button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.campaigns=data.campaigns.filter(x=>x.id!=='${c.id}');saveData();render();}">🗑</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`}
+  `;
+}
+
+window.showCampaignForm = function(cid) {
+  const c = cid ? data.campaigns.find(x=>x.id===cid) : null;
+  const form = c ? {...c} : {name:'',type:'Именная стипендия',startDate:'',endDate:'',status:'planning',applications:[]};
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${c?'Редактировать кампанию':'Новая кампания'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="cf-name" class="input mt-2" value="${esc(form.name)}"></div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Тип</label><input id="cf-type" class="input mt-2" value="${esc(form.type)}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Статус</label>
+          <select id="cf-status" class="input mt-2">
+            <option value="planning" ${form.status==='planning'?'selected':''}>Планирование</option>
+            <option value="active" ${form.status==='active'?'selected':''}>Активная</option>
+            <option value="completed" ${form.status==='completed'?'selected':''}>Завершена</option>
+          </select></div>
+      </div>
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Начало</label><input id="cf-start" type="date" class="input mt-2" value="${form.startDate}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Окончание</label><input id="cf-end" type="date" class="input mt-2" value="${form.endDate}"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveCampaign('${cid||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveCampaign = function(cid) {
+  const name = $('#cf-name').value.trim();
+  if (!name) return alert('Введите название');
+  const obj = {name, type:$('#cf-type').value, status:$('#cf-status').value, startDate:$('#cf-start').value, endDate:$('#cf-end').value};
+  if (cid) { Object.assign(data.campaigns.find(x=>x.id===cid), obj); }
+  else { data.campaigns.push({id:uid(),...obj,applications:[]}); }
+  saveData(); closeModal(); render();
+};
+
+window.printOrder = function(cid) {
+  const c = data.campaigns.find(x=>x.id===cid);
+  if (!c) return;
+  const approved = c.applications.filter(a=>a.status==='approved');
+  const w = window.open('','_blank');
+  w.document.write(`<html><head><title>Приказ — ${esc(c.name)}</title><style>body{font-family:serif;padding:40px;max-width:800px;margin:auto}h1{text-align:center}table{width:100%;border-collapse:collapse;margin:20px 0}td,th{border:1px solid #333;padding:8px;text-align:left}.sig{margin-top:60px;display:flex;justify-content:space-between}</style></head><body><h1>ПРИКАЗ</h1><p style="text-align:center">О назначении именных стипендий</p><p>${esc(c.name)}</p><table><tr><th>№</th><th>ФИО</th><th>Сумма</th></tr>${approved.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.applicantName)}</td><td>${(a.amount||0).toLocaleString('ru')} ₽</td></tr>`).join('')}</table><div class="sig"><span>Ректор _________</span><span>Дата ___________</span></div></body></html>`);
+  w.document.close(); w.print();
+};
+
+// ── Meetings Module ──
+function renderMeetings() {
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Совещания (${data.meetings.length})</h2>
+      <button class="btn btn-primary" onclick="showMeetingForm()">+ Новое совещание</button>
+    </div>
+    ${data.meetings.length===0?'<div class="card empty"><div class="empty-icon">👥</div><p>Нет совещаний</p></div>':
+    `<div style="display:flex;flex-direction:column;gap:12px;">
+      ${data.meetings.map(m=>`
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <div><div class="text-sm font-medium" style="color:var(--text);">${esc(m.title)}</div><div class="text-xs" style="color:var(--text3);">${m.date} • ${esc(m.location)}</div></div>
+            <span class="text-xs" style="color:var(--text3);">${m.decisions.length} решений</span>
+          </div>
+          ${m.agenda.length>0?`<div class="mb-2"><div class="text-xs" style="color:var(--text3);margin-bottom:4px;">Повестка:</div><ol style="font-size:12px;color:var(--text2);padding-left:16px;">${m.agenda.slice(0,3).map(a=>`<li>${esc(a)}</li>`).join('')}${m.agenda.length>3?`<li style="color:var(--text3);">...и ещё ${m.agenda.length-3}</li>`:''}</ol></div>`:''}
+          <div class="flex gap-2" style="padding-top:8px;border-top:1px solid var(--border);">
+            <button class="btn btn-sm btn-secondary" onclick="showMeetingForm('${m.id}')">Открыть</button>
+            <button class="btn btn-sm btn-secondary" onclick="convertToTasks('${m.id}')">⚡ В задачи</button>
+            <button class="btn btn-sm btn-danger" onclick="if(confirm('Удалить?')){data.meetings=data.meetings.filter(x=>x.id!=='${m.id}');saveData();render();}">🗑</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`}
+    
+    ${data.decisions.length>0?`
+    <h3 class="text-lg font-bold mt-4 mb-3" style="color:var(--text);">Реестр решений (${data.decisions.length})</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${data.decisions.map(d=>{
+        const isOverdue = d.dueDate < today() && d.status !== 'done';
+        return `
+        <div class="card" style="display:flex;align-items:flex-start;gap:12px;${isOverdue?'border-color:var(--red);':''}">
+          <span class="status-dot ${d.status==='done'?'status-green':isOverdue?'status-red':'status-blue'}" style="margin-top:4px;"></span>
+          <div style="flex:1;"><div class="text-sm" style="color:var(--text);">${esc(d.text)}</div><div class="text-xs" style="color:var(--text3);">${esc(d.assignee)} • до ${d.dueDate} ${isOverdue?'⚠️ Просрочено':''}</div></div>
+          <select class="input" style="width:auto;padding:4px 8px;font-size:12px;" onchange="updateDecisionStatus('${d.id}',this.value)">
+            <option value="pending" ${d.status==='pending'?'selected':''}>Ожидает</option>
+            <option value="in_progress" ${d.status==='in_progress'?'selected':''}>В работе</option>
+            <option value="done" ${d.status==='done'?'selected':''}>Исполнено</option>
+            <option value="overdue" ${d.status==='overdue'?'selected':''}>Просрочено</option>
+          </select>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+  `;
+}
+
+window.showMeetingForm = function(mid) {
+  const m = mid ? data.meetings.find(x=>x.id===mid) : null;
+  const form = m ? {...m, decisions:[...m.decisions], agenda:[...m.agenda], participants:[...m.participants]} : {title:'',date:today(),location:'',participants:[currentUser||''],agenda:[],protocol:'',decisions:[]};
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${m?'Редактировать совещание':'Новое совещание'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="grid-2">
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Тема *</label><input id="mf-title" class="input mt-2" value="${esc(form.title)}"></div>
+        <div><label class="text-sm font-medium" style="color:var(--text2);">Дата</label><input id="mf-date" type="date" class="input mt-2" value="${form.date}"></div>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Место / Ссылка</label><input id="mf-loc" class="input mt-2" value="${esc(form.location)}"></div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Участники (через запятую)</label><input id="mf-parts" class="input mt-2" value="${esc(form.participants.join(', '))}"></div>
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-sm font-medium" style="color:var(--text2);">Повестка</label>
+          <button class="btn btn-sm" style="background:var(--purple2);color:var(--purple);" onclick="generateAutoAgenda()">⚡ Автоповестка</button>
+        </div>
+        <textarea id="mf-agenda" class="input mt-2" rows="4" placeholder="Каждый пункт с новой строки">${esc(form.agenda.join('\n'))}</textarea>
+      </div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Протокол</label><textarea id="mf-proto" class="input mt-2" rows="3" placeholder="Ход обсуждения...">${esc(form.protocol||'')}</textarea></div>
+      <div>
+        <label class="text-sm font-medium" style="color:var(--text2);">Решения (текст | ответственный | срок)</label>
+        <textarea id="mf-decisions" class="input mt-2" rows="3" placeholder="Каждое решение: текст | ответственный | срок">${esc(form.decisions.map(d=>`${d.text} | ${d.assignee} | ${d.dueDate}`).join('\n'))}</textarea>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="printAgenda()">🖨 Печать повестки</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveMeeting('${mid||''}')">Сохранить</button>
+    </div>
+  `);
+  
+  // Store form data for auto-agenda
+  window._meetingForm = form;
+};
+
+window.generateAutoAgenda = function() {
+  const t = today();
+  const items = [];
+  const overdue = data.tasks.filter(x=>x.dueDate&&x.dueDate<t&&x.status!=='done');
+  if (overdue.length) items.push(`Просроченные задачи (${overdue.length} шт.)`);
+  const redProj = data.projects.filter(p=>data.tasks.filter(x=>x.projectId===p.id).some(x=>x.dueDate&&x.dueDate<t&&x.status!=='done'));
+  if (redProj.length) items.push(`Проекты в красной зоне: ${redProj.map(p=>p.name).join(', ')}`);
+  const blocked = data.tasks.filter(x=>x.status==='blocked');
+  if (blocked.length) items.push(`Задачи на блоке (${blocked.length} шт.)`);
+  const critRisks = data.risks.filter(r=>(r.impact==='critical'||r.impact==='high')&&r.status==='open');
+  if (critRisks.length) items.push(`Критические риски (${critRisks.length} шт.)`);
+  const behind = data.indicators.filter(i=>i.planValue>0&&(i.factValue/i.planValue)<0.8);
+  if (behind.length) items.push(`Показатели П-2030 с отставанием (${behind.length} шт.)`);
+  const grantDeadlines = data.grants.filter(g=>g.status==='executing'&&g.endDate&&new Date(g.endDate).getTime()-Date.now()<14*86400000);
+  if (grantDeadlines.length) items.push(`Приближающаяся отчётность по грантам (${grantDeadlines.length} шт.)`);
+  if (items.length===0) items.push('Обсуждение текущих вопросов');
+  $('#mf-agenda').value = items.join('\n');
+};
+
+window.printAgenda = function() {
+  const title = $('#mf-title').value;
+  const date = $('#mf-date').value;
+  const loc = $('#mf-loc').value;
+  const parts = $('#mf-parts').value;
+  const agenda = $('#mf-agenda').value.split('\n').filter(x=>x.trim());
+  const w = window.open('','_blank');
+  w.document.write(`<html><head><title>Повестка</title><style>body{font-family:serif;padding:40px;max-width:800px;margin:auto}h1{text-align:center;font-size:18px}table{width:100%;border-collapse:collapse;margin:20px 0}td,th{border:1px solid #333;padding:8px;text-align:left}.hdr{text-align:center;margin-bottom:20px}</style></head><body><div class="hdr"><h1>ПОВЕСТКА СОВЕЩАНИЯ</h1><p>${esc(title)}</p><p>Дата: ${date} | Место: ${esc(loc)}</p><p>Участники: ${esc(parts)}</p></div><table><tr><th>№</th><th>Вопрос</th><th>Докладчик</th><th>Решение</th><th>Голосование</th></tr>${agenda.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a)}</td><td></td><td></td><td></td></tr>`).join('')}</table></body></html>`);
+  w.document.close(); w.print();
+};
+
+window.saveMeeting = function(mid) {
+  const title = $('#mf-title').value.trim();
+  if (!title) return alert('Введите тему');
+  const participants = $('#mf-parts').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const agenda = $('#mf-agenda').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const decisionsRaw = $('#mf-decisions').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const decisions = decisionsRaw.map(line => {
+    const parts = line.split('|').map(s=>s.trim());
+    return {id:uid(),text:parts[0]||'',assignee:parts[1]||'',dueDate:parts[2]||'',status:'pending',meetingId:mid||'new'};
+  });
+  
+  const obj = {title, date:$('#mf-date').value, location:$('#mf-loc').value, participants, agenda, protocol:$('#mf-proto').value, decisions};
+  if (mid) { Object.assign(data.meetings.find(x=>x.id===mid), obj); }
+  else { data.meetings.push({id:uid(),...obj,createdAt:new Date().toISOString()}); }
+  
+  // Save decisions globally
+  decisions.forEach(d => { if (!data.decisions.find(x=>x.id===d.id)) data.decisions.push(d); });
+  
+  addLog(mid?'Совещание обновлено':'Создано совещание', title, `${decisions.length} решений`);
+  saveData(); closeModal(); render();
+};
+
+window.convertToTasks = function(mid) {
+  const m = data.meetings.find(x=>x.id===mid);
+  if (!m) return;
+  let count = 0;
+  m.decisions.forEach(d => {
+    if (!d.taskId) {
+      const taskId = uid();
+      data.tasks.push({id:taskId, title:d.text, description:`Поручение совещания от ${fmtDate(new Date())}`, status:'in_progress', assignee:d.assignee, dueDate:d.dueDate, meetingId:mid, createdAt:new Date().toISOString(), createdBy:currentUser||'', priority:'high', checklist:[]});
+      d.taskId = taskId;
+      count++;
+    }
+  });
+  addLog('Решения → задачи', m.title, `Создано ${count} задач`);
+  saveData(); render();
+  alert(`Создано ${count} задач из решений совещания`);
+};
+
+window.updateDecisionStatus = function(did, status) {
+  const d = data.decisions.find(x=>x.id===did);
+  if (d) { d.status = status; saveData(); }
+};
+
+// ── Reports Module ──
+function renderReports() {
+  return `
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:8px;">
+      <h2 class="text-lg font-bold" style="color:var(--text);">Генератор отчётов</h2>
+      <div class="flex gap-2">
+        <button class="btn btn-success" onclick="exportXLSX()">📊 XLSX</button>
+        <button class="btn" style="background:var(--red);color:#fff;" onclick="exportPDF()">📄 PDF</button>
+      </div>
+    </div>
+    <div class="grid-3 mb-4">
+      ${[
+        {id:'summary',label:'Сводный отчёт',desc:'Общий по управлению',icon:'📋'},
+        {id:'projects',label:'Проектная работа',desc:'Проекты и портфели',icon:'📁'},
+        {id:'grants',label:'Гранты',desc:'Грантовая деятельность',icon:'🏆'},
+        {id:'priority2030',label:'Приоритет-2030',desc:'Показатели программы',icon:'📈'},
+        {id:'scholarships',label:'Стипендии',desc:'Именные стипендии',icon:'🎓'},
+        {id:'documents',label:'Документооборот',desc:'Статистика документов',icon:'📄'},
+      ].map(r=>`
+        <div class="card" style="cursor:pointer;" onclick="previewReport('${r.id}')">
+          <div style="font-size:24px;margin-bottom:8px;">${r.icon}</div>
+          <div class="text-sm font-medium" style="color:var(--text);">${r.label}</div>
+          <div class="text-xs" style="color:var(--text3);">${r.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card" id="report-preview">
+      <h3 class="font-medium mb-3" style="color:var(--text);">📋 Предпросмотр сводного отчёта</h3>
+      ${renderReportPreview('summary')}
+    </div>
+  `;
+}
+
+function renderReportPreview(type) {
+  const t = today();
+  if (type === 'summary') {
+    return `
+      <div class="grid-4 mb-4">
+        <div class="card" style="text-align:center;background:var(--blue2);"><div class="text-2xl font-bold" style="color:var(--blue);">${data.projects.length}</div><div class="text-xs" style="color:var(--blue);">Проектов</div></div>
+        <div class="card" style="text-align:center;background:var(--green2);"><div class="text-2xl font-bold" style="color:var(--green);">${data.tasks.filter(x=>x.status==='done').length}</div><div class="text-xs" style="color:var(--green);">Задач ✓</div></div>
+        <div class="card" style="text-align:center;background:var(--purple2);"><div class="text-2xl font-bold" style="color:var(--purple);">${data.grants.length}</div><div class="text-xs" style="color:var(--purple);">Грантов</div></div>
+        <div class="card" style="text-align:center;background:var(--orange2);"><div class="text-2xl font-bold" style="color:var(--orange);">${data.meetings.length}</div><div class="text-xs" style="color:var(--orange);">Совещаний</div></div>
+      </div>
+      <div class="card">
+        <h4 class="text-sm font-medium mb-2" style="color:var(--text2);">Ключевые показатели</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="flex justify-between text-sm"><span style="color:var(--text2);">Просроченных задач</span><span style="color:var(--red);font-weight:500;">${data.tasks.filter(x=>x.dueDate&&x.dueDate<t&&x.status!=='done').length}</span></div>
+          <div class="flex justify-between text-sm"><span style="color:var(--text2);">Задач на блоке</span><span style="color:var(--orange);font-weight:500;">${data.tasks.filter(x=>x.status==='blocked').length}</span></div>
+          <div class="flex justify-between text-sm"><span style="color:var(--text2);">Критических рисков</span><span style="color:var(--red);font-weight:500;">${data.risks.filter(r=>r.impact==='critical'&&r.status==='open').length}</span></div>
+          <div class="flex justify-between text-sm"><span style="color:var(--text2);">Решений просрочено</span><span style="color:var(--red);font-weight:500;">${data.decisions.filter(d=>d.status==='overdue').length}</span></div>
+          <div class="flex justify-between text-sm"><span style="color:var(--text2);">Освоение грантов</span><span style="color:var(--green);font-weight:500;">${data.grants.reduce((s,g)=>s+g.amount,0)>0?Math.round(data.grants.reduce((s,g)=>s+g.spent,0)/data.grants.reduce((s,g)=>s+g.amount,0)*100):0}%</span></div>
+        </div>
+      </div>
+    `;
+  }
+  if (type === 'projects') {
+    return `<div class="grid-3 mb-3">
+      <div class="card" style="text-align:center;"><div class="text-xl font-bold" style="color:var(--text);">${data.projects.length}</div><div class="text-xs" style="color:var(--text3);">Всего</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xl font-bold" style="color:var(--green);">${data.projects.filter(p=>p.status==='active').length}</div><div class="text-xs" style="color:var(--text3);">Активных</div></div>
+      <div class="card" style="text-align:center;"><div class="text-xl font-bold" style="color:var(--text);">${data.projects.length>0?Math.round(data.projects.reduce((s,p)=>s+p.progress,0)/data.projects.length):0}%</div><div class="text-xs" style="color:var(--text3);">Ср. прогресс</div></div>
+    </div>`;
+  }
+  return `<div class="empty"><p class="text-sm">Выберите тип отчёта</p></div>`;
+}
+
+window.previewReport = function(type) {
+  $('#report-preview').innerHTML = `<h3 class="font-medium mb-3" style="color:var(--text);">📋 Предпросмотр</h3>${renderReportPreview(type)}`;
+};
+
+window.exportXLSX = function() {
+  if (typeof XLSX === 'undefined') return alert('Библиотека XLSX не загружена');
+  const wb = XLSX.utils.book_new();
+  
+  // Projects
+  if (data.projects.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.projects.map(p=>({'Код':p.code,'Название':p.name,'Статус':p.status,'Руководитель':p.manager,'Начало':p.startDate,'Окончание':p.endDate,'Прогресс %':p.progress}))), 'Проекты');
+  }
+  // Tasks
+  if (data.tasks.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.tasks.map(t=>({'Задача':t.title,'Статус':t.status,'Исполнитель':t.assignee,'Приоритет':t.priority,'Срок':t.dueDate||''}))), 'Задачи');
+  }
+  // Grants
+  if (data.grants.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.grants.map(g=>({'Название':g.name,'Статус':g.status,'Сумма':g.amount,'Освоено':g.spent,'Остаток':g.amount-g.spent,'Руководитель':g.manager}))), 'Гранты');
+  }
+  // Indicators
+  if (data.indicators.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.indicators.map(i=>({'Показатель':i.name,'Ед.':i.unit,'План':i.planValue,'Факт':i.factValue,'Выполнение %':i.planValue>0?Math.round(i.factValue/i.planValue*100):0,'Ответственный':i.responsible}))), 'Показатели');
+  }
+  // Decisions
+  if (data.decisions.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.decisions.map(d=>({'Решение':d.text,'Ответственный':d.assignee,'Срок':d.dueDate,'Статус':d.status}))), 'Решения');
+  }
+  // Documents
+  if (data.documents.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.documents.map(d=>({'Название':d.name,'Тип':d.type,'Статус':d.status,'Инициатор':d.initiator,'Дата':fmtDate(d.createdAt)}))), 'Документы');
+  }
+  
+  XLSX.writeFile(wb, `caesar_report_${today()}.xlsx`);
+};
+
+window.exportPDF = function() {
+  if (typeof window.jspdf === 'undefined') return alert('Библиотека jsPDF не загружена');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+  
+  doc.setFontSize(16);
+  doc.text('AIS "Caesar" — Report', 105, y, {align:'center'});
+  y += 10;
+  doc.setFontSize(10);
+  doc.text('Date: ' + new Date().toLocaleString('en'), 105, y, {align:'center'});
+  y += 15;
+  
+  doc.setFontSize(14);
+  doc.text('Projects', 20, y); y += 8;
+  doc.setFontSize(10);
+  doc.text('Total: ' + data.projects.length, 20, y); y += 6;
+  doc.text('Active: ' + data.projects.filter(p=>p.status==='active').length, 20, y); y += 6;
+  doc.text('Tasks total: ' + data.tasks.length, 20, y); y += 6;
+  doc.text('Overdue: ' + data.tasks.filter(t=>t.dueDate&&t.dueDate<today()&&t.status!=='done').length, 20, y); y += 10;
+  
+  doc.setFontSize(14);
+  doc.text('Grants', 20, y); y += 8;
+  doc.setFontSize(10);
+  const totalAmt = data.grants.reduce((s,g)=>s+g.amount,0);
+  const totalSpent = data.grants.reduce((s,g)=>s+g.spent,0);
+  doc.text('Total: ' + data.grants.length, 20, y); y += 6;
+  doc.text('Amount: ' + totalAmt.toLocaleString() + ' RUB', 20, y); y += 6;
+  doc.text('Spent: ' + totalSpent.toLocaleString() + ' RUB', 20, y); y += 10;
+  
+  doc.setFontSize(14);
+  doc.text('Priority 2030', 20, y); y += 8;
+  doc.setFontSize(10);
+  doc.text('Indicators: ' + data.indicators.length, 20, y); y += 6;
+  const avgPct = data.indicators.length>0?Math.round(data.indicators.reduce((s,i)=>s+(i.planValue>0?(i.factValue/i.planValue)*100:0),0)/data.indicators.length):0;
+  doc.text('Avg completion: ' + avgPct + '%', 20, y); y += 10;
+  
+  doc.setFontSize(14);
+  doc.text('Meetings & Decisions', 20, y); y += 8;
+  doc.setFontSize(10);
+  doc.text('Meetings: ' + data.meetings.length, 20, y); y += 6;
+  doc.text('Decisions: ' + data.decisions.length, 20, y); y += 6;
+  doc.text('Done: ' + data.decisions.filter(d=>d.status==='done').length, 20, y); y += 6;
+  doc.text('Overdue: ' + data.decisions.filter(d=>d.status==='overdue').length, 20, y);
+  
+  doc.save(`caesar_report_${today()}.pdf`);
+};
+
+// ── Admin Module ──
+let adminTab = 'users';
+
+function renderAdmin() {
+  return `
+    <h2 class="text-lg font-bold mb-4" style="color:var(--text);">Администрирование</h2>
+    <div class="flex gap-2 mb-4">
+      <button class="btn btn-sm ${adminTab==='users'?'btn-primary':'btn-secondary'}" onclick="adminTab='users';render();">👤 Пользователи</button>
+      <button class="btn btn-sm ${adminTab==='dirs'?'btn-primary':'btn-secondary'}" onclick="adminTab='dirs';render();">📖 Справочники</button>
+      <button class="btn btn-sm ${adminTab==='logs'?'btn-primary':'btn-secondary'}" onclick="adminTab='logs';render();">📜 Журнал</button>
+    </div>
+    ${adminTab==='users'?renderAdminUsers():adminTab==='dirs'?renderAdminDirs():renderAdminLogs()}
+  `;
+}
+
+function renderAdminUsers() {
+  const roleLabels = {admin:'Администратор',head:'Руководитель',pm:'РП',officer:'Сотрудник',grant:'Координатор грантов',scholar:'Стипендии',member:'Участник',viewer:'Наблюдатель'};
+  return `
+    <div class="flex justify-end mb-3"><button class="btn btn-primary btn-sm" onclick="showUserForm()">+ Добавить</button></div>
+    ${data.users.length===0?'<div class="card empty"><p>Нет пользователей</p></div>':
+    `<div style="display:flex;flex-direction:column;gap:8px;">
+      ${data.users.map(u=>`
+        <div class="card" style="display:flex;align-items:center;gap:12px;">
+          <div style="width:32px;height:32px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text2);">${esc(u.name[0]?.toUpperCase())}</div>
+          <div style="flex:1;"><div class="text-sm font-medium" style="color:var(--text);">${esc(u.name)}</div>
+            <div class="flex gap-1 mt-1" style="flex-wrap:wrap;">${u.roles.map(r=>`<span class="badge badge-blue">${roleLabels[r]||r}</span>`).join('')}</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="showUserForm('${u.id}')">✏️</button>
+        </div>
+      `).join('')}
+    </div>`}
+  `;
+}
+
+window.showUserForm = function(uid2) {
+  const u = uid2 ? data.users.find(x=>x.id===uid2) : null;
+  const roles = ['admin','head','pm','officer','grant','scholar','member','viewer'];
+  const roleLabels = {admin:'Администратор',head:'Руководитель',pm:'РП',officer:'Сотрудник',grant:'Гранты',scholar:'Стипендии',member:'Участник',viewer:'Наблюдатель'};
+  
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">${u?'Редактировать':'Новый пользователь'}</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Имя *</label><input id="uf-name" class="input mt-2" value="${esc(u?.name||'')}"></div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Роли</label>
+        <div class="grid-2 mt-2">${roles.map(r=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;"><input type="checkbox" value="${r}" ${u?.roles.includes(r)?'checked':''}> ${roleLabels[r]}</label>`).join('')}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveUser('${uid2||''}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveUser = function(uid2) {
+  const name = $('#uf-name').value.trim();
+  if (!name) return alert('Введите имя');
+  const roles = $$('input[type=checkbox]:checked').map(c=>c.value);
+  if (uid2) { const u = data.users.find(x=>x.id===uid2); u.name=name; u.roles=roles; }
+  else { data.users.push({id:uid(),name,roles}); }
+  addLog('Пользователи обновлены', name, `Роли: ${roles.join(', ')}`);
+  saveData(); closeModal(); render();
+};
+
+function renderAdminDirs() {
+  const types = [{id:'direction',label:'Направления'},{id:'expense',label:'Статьи расходов'},{id:'docType',label:'Виды документов'},{id:'status',label:'Статусы'}];
+  return `
+    <div class="flex justify-end mb-3"><button class="btn btn-primary btn-sm" onclick="showDirForm()">+ Добавить</button></div>
+    ${types.map(t=>`
+      <div class="card mb-3">
+        <h4 class="text-sm font-medium mb-2" style="color:var(--text2);">${t.label}</h4>
+        <div class="flex gap-2" style="flex-wrap:wrap;">
+          ${data.directories.filter(d=>d.type===t.id).map(d=>`
+            <span class="badge badge-gray" style="gap:4px;">${esc(d.name)} <button onclick="deleteDir('${d.id}')" style="color:var(--red);cursor:pointer;border:none;background:none;font-size:10px;">✕</button></span>
+          `).join('') || '<span class="text-xs" style="color:var(--text3);">Пусто</span>'}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+window.showDirForm = function() {
+  showModal(`
+    <div class="modal-header"><h3 class="font-medium" style="color:var(--text);">Новый элемент справочника</h3><button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Название *</label><input id="dirf-name" class="input mt-2"></div>
+      <div><label class="text-sm font-medium" style="color:var(--text2);">Тип</label>
+        <select id="dirf-type" class="input mt-2">
+          <option value="direction">Направление</option>
+          <option value="expense">Статья расходов</option>
+          <option value="docType">Вид документа</option>
+          <option value="status">Статус</option>
+        </select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveDir()">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveDir = function() {
+  const name = $('#dirf-name').value.trim();
+  if (!name) return alert('Введите название');
+  data.directories.push({id:uid(),name,type:$('#dirf-type').value});
+  saveData(); closeModal(); render();
+};
+
+window.deleteDir = function(id) {
+  const item = data.directories.find(d=>d.id===id);
+  if (!item) return;
+  let used = 0;
+  if (item.type==='direction') used = data.projects.filter(p=>p.direction===item.name).length;
+  else if (item.type==='docType') used = data.documents.filter(d=>d.type===item.name).length;
+  if (used>0) return alert(`Нельзя удалить: используется в ${used} записях`);
+  if (confirm('Удалить элемент?')) { data.directories = data.directories.filter(d=>d.id!==id); saveData(); render(); }
+};
+
+function renderAdminLogs() {
+  return data.logs.length===0?'<div class="card empty"><p>Журнал пуст</p></div>':
+  `<div class="card" style="max-height:500px;overflow:auto;">
+    ${data.logs.slice(0,100).map(l=>`
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px;border-bottom:1px solid var(--border);">
+        <div style="width:24px;height:24px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text2);flex-shrink:0;">${esc(l.user[0]?.toUpperCase())}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="text-sm" style="color:var(--text);">${esc(l.action)}</div>
+          <div class="text-xs" style="color:var(--text3);">${esc(l.object)} — ${esc(l.details)}</div>
+          <div class="text-xs" style="color:var(--text3);">${esc(l.user)} • ${new Date(l.timestamp).toLocaleString('ru')}</div>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+// ── Settings Module ──
+function renderSettings() {
+  return `
+    <h2 class="text-lg font-bold mb-4" style="color:var(--text);">Настройки</h2>
+    
+    <div class="card mb-4">
+      <h3 class="font-medium mb-3" style="color:var(--text);">🎨 Тема оформления</h3>
+      <div class="flex gap-2">
+        <button class="btn ${theme==='light'?'btn-primary':'btn-secondary'}" onclick="theme='light';localStorage.setItem('${THEME_KEY}','light');render();">☀️ Светлая</button>
+        <button class="btn ${theme==='dark'?'btn-primary':'btn-secondary'}" onclick="theme='dark';localStorage.setItem('${THEME_KEY}','dark');render();">🌙 Тёмная</button>
+      </div>
+    </div>
+    
+    <div class="card mb-4">
+      <h3 class="font-medium mb-3" style="color:var(--text);">☁️ Облачная синхронизация</h3>
+      <p class="text-xs mb-2" style="color:var(--text3);">API ключ JSONBin.io для совместной работы</p>
+      <div class="flex gap-2">
+        <input id="set-token" class="input" value="${esc(cloudToken)}" placeholder="X-Master-Key" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+        <button class="btn btn-primary" onclick="saveCloudToken()">Сохранить</button>
+      </div>
+      <div class="flex items-center gap-2 mt-2">
+        <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'}"></span>
+        <span class="text-xs" style="color:var(--text3);">${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка':'Локальный режим'}</span>
+      </div>
+    </div>
+    
+    <div class="card mb-4">
+      <h3 class="font-medium mb-3" style="color:var(--text);">💾 Управление данными</h3>
+      <div class="flex gap-2 mb-3" style="flex-wrap:wrap;">
+        <button class="btn btn-success btn-sm" onclick="exportJSON()">📥 Экспорт JSON</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">📤 Импорт JSON<input type="file" accept=".json" style="display:none;" onchange="importJSON(event)"></label>
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑 Очистить всё</button>
+      </div>
+    </div>
+    
+    <div class="card mb-4">
+      <h3 class="font-medium mb-3" style="color:var(--text);">👤 Аккаунт</h3>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;">${esc(currentUser[0]?.toUpperCase())}</div>
+          <div><div class="text-sm font-medium" style="color:var(--text);">${esc(currentUser)}</div><div class="text-xs" style="color:var(--text3);">Текущий пользователь</div></div>
+        </div>
+        <button class="btn btn-secondary" onclick="if(confirm('Выйти?')){currentUser=null;localStorage.removeItem('${USER_KEY}');render();}">Выйти</button>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3 class="font-medium mb-3" style="color:var(--text);">⌨️ Горячие клавиши</h3>
+      <div class="grid-2" style="gap:8px;">
+        <div class="flex items-center gap-2 text-sm"><kbd style="padding:2px 6px;background:var(--bg3);border-radius:4px;font-size:11px;">Ctrl+K</kbd><span style="color:var(--text3);">Поиск</span></div>
+        <div class="flex items-center gap-2 text-sm"><kbd style="padding:2px 6px;background:var(--bg3);border-radius:4px;font-size:11px;">Esc</kbd><span style="color:var(--text3);">Закрыть</span></div>
+      </div>
+    </div>
+  `;
+}
+
+window.saveCloudToken = function() {
+  const token = $('#set-token').value.replace(/[^\x20-\x7E]/g,'').trim();
+  cloudToken = token;
+  localStorage.setItem(TOKEN_KEY, token);
+  syncStatus = token ? 'connected' : 'disconnected';
+  if (token) startSync();
+  else if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  render();
+};
+
+window.exportJSON = function() {
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `caesar_backup_${today()}.json`; a.click();
+  URL.revokeObjectURL(url);
+};
+
+window.importJSON = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { data = {...defaultData, ...JSON.parse(reader.result)}; saveData(); render(); alert('Данные импортированы'); }
+    catch(err) { alert('Ошибка импорта: ' + err.message); }
+  };
+  reader.readAsText(file);
+};
+
+window.clearAllData = function() {
+  if (!confirm('ВНИМАНИЕ! Все данные будут удалены!')) return;
+  if (!confirm('Вы уверены? Это необратимо!')) return;
+  data = {...defaultData};
+  saveData(); render();
+};
+
+// ── Notifications ──
+function showNotifications() {
+  const userNotifs = data.notifications.filter(n => n.userId===currentUser || n.userId==='all');
+  showModal(`
+    <div class="modal-header">
+      <h3 class="font-medium" style="color:var(--text);">🔔 Уведомления</h3>
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary" onclick="markAllRead()">Прочитать все</button>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow:auto;">
+      ${userNotifs.length===0?'<div class="empty"><p>Нет уведомлений</p></div>':
+      userNotifs.slice(0,20).map(n=>`
+        <div style="padding:10px;border-bottom:1px solid var(--border);${!n.read?'background:var(--blue2);':''}">
+          <div class="text-sm font-medium" style="color:var(--text);">${esc(n.title)}</div>
+          <div class="text-xs" style="color:var(--text3);">${esc(n.message)}</div>
+          <div class="text-xs" style="color:var(--text3);margin-top:4px;">${new Date(n.createdAt).toLocaleString('ru')}</div>
+        </div>
+      `).join('')}
+    </div>
+  `);
+}
+
+window.markAllRead = function() {
+  data.notifications.forEach(n => n.read = true);
+  saveData(); closeModal(); render();
+};
+
+// ── Search ──
+function showSearch() {
+  showModal(`
+    <div style="padding:16px;">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:18px;">🔍</span>
+        <input id="search-input" class="input" placeholder="Поиск задач, проектов, грантов..." autofocus style="font-size:16px;border:none;background:transparent;">
+        <kbd style="padding:2px 6px;background:var(--bg3);border-radius:4px;font-size:11px;color:var(--text3);">Esc</kbd>
+      </div>
+      <div id="search-results"></div>
+    </div>
+  `);
+  
+  const input = $('#search-input');
+  input.oninput = () => {
+    const q = input.value.toLowerCase();
+    if (q.length < 2) { $('#search-results').innerHTML = ''; return; }
+    const results = [
+      ...data.tasks.filter(t=>t.title.toLowerCase().includes(q)).map(t=>({type:'Задача',name:t.title})),
+      ...data.projects.filter(p=>p.name.toLowerCase().includes(q)).map(p=>({type:'Проект',name:p.name})),
+      ...data.grants.filter(g=>g.name.toLowerCase().includes(q)).map(g=>({type:'Грант',name:g.name})),
+      ...data.documents.filter(d=>d.name.toLowerCase().includes(q)).map(d=>({type:'Документ',name:d.name})),
+    ].slice(0,10);
+    
+    $('#search-results').innerHTML = results.length===0?'<p class="text-sm" style="color:var(--text3);text-align:center;padding:16px;">Ничего не найдено</p>':
+    results.map(r=>`<div style="padding:8px;border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <span class="badge badge-blue">${r.type}</span>
+      <span class="text-sm" style="color:var(--text);">${esc(r.name)}</span>
+    </div>`).join('');
+  };
+  input.focus();
+}
+
+// ── Modal System ──
+function showModal(content) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal fade-in">${content}</div></div>`;
+}
+
+window.closeModal = function() {
+  const root = $('#modal-root');
+  if (root) root.innerHTML = '';
+};
+
+// ── Init ──
+loadData();
+render();
+if (currentUser && cloudToken) startSync();
+
+// Responsive handler
+window.addEventListener('resize', () => {
+  const mobileTabs = $$('[data-kanban-tab]');
+  const mobileList = $('[data-mobile-task-list]');
+  if (window.innerWidth < 768) {
+    mobileTabs.forEach(t => t.style.display = 'inline-flex');
+    if (mobileList) mobileList.style.display = 'block';
+  } else {
+    mobileTabs.forEach(t => t.style.display = 'none');
+    if (mobileList) mobileList.style.display = 'none';
+  }
+});
+
+// Trigger initial responsive check
+setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+</script>
+</body>
 </html>

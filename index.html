@@ -179,6 +179,7 @@ tr:hover td { background:var(--bg3); }
 </head>
 <body>
 <div id="app"></div>
+<div id="modal-root"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -330,9 +331,24 @@ async function yandexDownload() {
 }
 
 // ── Unified Sync ──
+// Обновление только индикатора синхронизации (без перерисовки всего интерфейса)
+function updateSyncIndicator() {
+  const indicators = document.querySelectorAll('[data-sync-status]');
+  indicators.forEach(el => {
+    const colors = {connected:'status-green',syncing:'status-yellow',error:'status-red',disconnected:'status-gray'};
+    const labels = {connected:'Подключено',syncing:'Синхронизация...',error:'Ошибка',disconnected:'Не подключено'};
+    el.className = `status-dot ${colors[syncStatus]||'status-gray'} ${syncStatus==='syncing'?'pulse':''}`;
+    const label = el.nextElementSibling;
+    if (label && label.classList.contains('sync-label')) {
+      label.textContent = labels[syncStatus]||'';
+    }
+  });
+}
+
 async function cloudUpload() {
   if (!cloudToken) return;
-  syncStatus = 'syncing'; render();
+  syncStatus = 'syncing';
+  updateSyncIndicator();
   try {
     await yandexUpload();
     syncStatus = 'connected';
@@ -340,7 +356,7 @@ async function cloudUpload() {
     syncStatus = 'error'; 
     console.error('Cloud upload error:', e); 
   }
-  render();
+  updateSyncIndicator();
 }
 
 async function cloudDownload() {
@@ -352,7 +368,7 @@ async function cloudDownload() {
     syncStatus = 'error'; 
     console.error('Cloud download error:', e); 
   }
-  render();
+  updateSyncIndicator();
 }
 
 function startSync() {
@@ -546,8 +562,8 @@ function renderApp() {
           <div>
             <div style="font-weight:600;font-size:14px;color:var(--text);">АИС «Цезарь»</div>
             <div class="flex items-center gap-1" style="font-size:11px;color:var(--text3);">
-              <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
-              <span>${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация':syncStatus==='error'?'Ошибка':'Локально'}</span>
+              <span data-sync-status class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
+              <span class="sync-label">${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация':syncStatus==='error'?'Ошибка':'Локально'}</span>
             </div>
           </div>
         </div>
@@ -601,8 +617,7 @@ function renderApp() {
         `).join('')}
       </div>
     </nav>
-  </div>
-  <div id="modal-root"></div>`;
+  </div>`;
 }
 
 function bindApp() {
@@ -1842,8 +1857,8 @@ function renderSettings() {
       <h3 class="font-medium mb-3" style="color:var(--text);">☁️ Синхронизация с Яндекс.Диском</h3>
       
       <div class="flex items-center gap-2 mb-3">
-        <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
-        <span class="text-sm" style="color:var(--text2);">${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка соединения':'Не подключено'}</span>
+        <span data-sync-status class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
+        <span class="sync-label text-sm" style="color:var(--text2);">${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка соединения':'Не подключено'}</span>
       </div>
       
       ${cloudToken ? `

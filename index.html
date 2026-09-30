@@ -258,38 +258,100 @@ function addNotification(userId, title, message) {
   saveData();
 }
 
-// ── Cloud Sync (JSONBin) ──
+// ── Cloud Sync ──
+// Провайдер: 'jsonbin' или 'yandex'
+let cloudProvider = localStorage.getItem('caesar_cloud_provider') || 'jsonbin';
 const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 const BIN_ID_KEY = 'caesar_bin_id';
+const YANDEX_FILE_PATH = 'app:/caesar_data.json';
+const YANDEX_CLIENT_ID_KEY = 'caesar_yandex_client_id';
 
+// ── JSONBin Sync ──
+async function jsonbinUpload() {
+  let binId = localStorage.getItem(BIN_ID_KEY);
+  const payload = JSON.stringify(data);
+  if (binId) {
+    await fetch(`${JSONBIN_URL}/${binId}`, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken}, body:payload});
+  } else {
+    const res = await fetch(JSONBIN_URL, {method:'POST', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken,'X-Bin-Name':'caesar_data'}, body:payload});
+    const j = await res.json();
+    if (j.metadata?.id) localStorage.setItem(BIN_ID_KEY, j.metadata.id);
+  }
+}
+
+async function jsonbinDownload() {
+  const binId = localStorage.getItem(BIN_ID_KEY);
+  if (!binId) return false;
+  const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {headers:{'X-Master-Key':cloudToken}});
+  const j = await res.json();
+  if (j.record) { data = {...defaultData, ...j.record}; saveData(); return true; }
+  return false;
+}
+
+// ── Яндекс.Диск Sync ──
+async function yandexUpload() {
+  // 1. Получаем URL для загрузки
+  const uploadRes = await fetch(`https://cloud-api.yandex.net/v1/disk/resources/upload?path=${encodeURIComponent(YANDEX_FILE_PATH)}&overwrite=true`, {
+    headers: {'Authorization': `OAuth ${cloudToken}`}
+  });
+  if (!uploadRes.ok) throw new Error('Yandex upload URL error: ' + uploadRes.status);
+  const uploadData = await uploadRes.json();
+  
+  // 2. Загружаем файл по полученному URL
+  const payload = JSON.stringify(data);
+  const putRes = await fetch(uploadData.href, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: payload
+  });
+  if (!putRes.ok && putRes.status !== 201 && putRes.status !== 202) {
+    throw new Error('Yandex upload error: ' + putRes.status);
+  }
+}
+
+async function yandexDownload() {
+  // 1. Получаем URL для скачивания
+  const dlRes = await fetch(`https://cloud-api.yandex.net/v1/disk/resources/download?path=${encodeURIComponent(YANDEX_FILE_PATH)}`, {
+    headers: {'Authorization': `OAuth ${cloudToken}`}
+  });
+  if (dlRes.status === 404) return false; // Файл ещё не создан
+  if (!dlRes.ok) throw new Error('Yandex download URL error: ' + dlRes.status);
+  const dlData = await dlRes.json();
+  
+  // 2. Скачиваем файл
+  const fileRes = await fetch(dlData.href);
+  if (!fileRes.ok) return false;
+  const json = await fileRes.json();
+  data = {...defaultData, ...json};
+  saveData();
+  return true;
+}
+
+// ── Unified Sync ──
 async function cloudUpload() {
   if (!cloudToken) return;
   syncStatus = 'syncing'; render();
   try {
-    let binId = localStorage.getItem(BIN_ID_KEY);
-    const payload = JSON.stringify(data);
-    if (binId) {
-      await fetch(`${JSONBIN_URL}/${binId}`, {method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken}, body:payload});
-    } else {
-      const res = await fetch(JSONBIN_URL, {method:'POST', headers:{'Content-Type':'application/json','X-Master-Key':cloudToken,'X-Bin-Name':'caesar_data'}, body:payload});
-      const j = await res.json();
-      if (j.metadata?.id) { localStorage.setItem(BIN_ID_KEY, j.metadata.id); }
-    }
+    if (cloudProvider === 'yandex') await yandexUpload();
+    else await jsonbinUpload();
     syncStatus = 'connected';
-  } catch(e) { syncStatus = 'error'; console.error('Cloud upload error:', e); }
+  } catch(e) { 
+    syncStatus = 'error'; 
+    console.error('Cloud upload error:', e); 
+  }
   render();
 }
 
 async function cloudDownload() {
   if (!cloudToken) return;
-  const binId = localStorage.getItem(BIN_ID_KEY);
-  if (!binId) return;
   try {
-    const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {headers:{'X-Master-Key':cloudToken}});
-    const j = await res.json();
-    if (j.record) { data = {...defaultData, ...j.record}; saveData(); }
+    if (cloudProvider === 'yandex') await yandexDownload();
+    else await jsonbinDownload();
     syncStatus = 'connected';
-  } catch(e) { syncStatus = 'error'; }
+  } catch(e) { 
+    syncStatus = 'error'; 
+    console.error('Cloud download error:', e); 
+  }
   render();
 }
 
@@ -299,6 +361,39 @@ function startSync() {
     syncTimer = setInterval(() => cloudDownload(), 20000);
     cloudDownload();
   }
+}
+
+// ── Яндекс OAuth ──
+// Обработка возврата с OAuth — токен в URL fragment
+function checkYandexOAuthCallback() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    const token = params.get('access_token');
+    if (token) {
+      cloudToken = token.replace(/[^\x20-\x7E]/g, '');
+      cloudProvider = 'yandex';
+      localStorage.setItem(TOKEN_KEY, cloudToken);
+      localStorage.setItem('caesar_cloud_provider', 'yandex');
+      // Убираем токен из URL
+      history.replaceState(null, '', window.location.pathname);
+      syncStatus = 'connected';
+      startSync();
+      alert('✅ Яндекс.Диск подключён! Токен получен и сохранён.');
+      render();
+    }
+  }
+}
+
+function getYandexOAuthUrl() {
+  const clientId = localStorage.getItem(YANDEX_CLIENT_ID_KEY);
+  if (!clientId) {
+    alert('Сначала зарегистрируйте приложение на https://oauth.yandex.ru/client/new и укажите Client ID в настройках');
+    return null;
+  }
+  // Redirect URI — текущая страница
+  const redirectUri = window.location.origin + window.location.pathname;
+  return `https://oauth.yandex.ru/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 // ── Рендеринг ──
@@ -314,7 +409,7 @@ function render() {
 function renderLogin() {
   return `
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--blue2),var(--purple2));padding:16px;">
-    <div class="card" style="width:100%;max-width:400px;padding:32px;">
+    <div class="card" style="width:100%;max-width:480px;padding:32px;">
       <div style="text-align:center;margin-bottom:24px;">
         <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
           <span style="color:#fff;font-size:28px;font-weight:bold;">Ц</span>
@@ -327,18 +422,88 @@ function renderLogin() {
           <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Имя пользователя</label>
           <input id="login-name" class="input" placeholder="Введите ваше имя" autocomplete="off">
         </div>
+        
         <div>
-          <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Токен облака (опционально)</label>
-          <input id="login-token" class="input" placeholder="JSONBin API Key" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+          <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:6px;">Хранилище данных</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button id="prov-local" class="btn btn-sm ${cloudProvider==='local'||!cloudToken?'btn-primary':'btn-secondary'}" onclick="setLoginProvider('local')">🏠 Локально</button>
+            <button id="prov-jsonbin" class="btn btn-sm ${cloudProvider==='jsonbin'&&cloudToken?'btn-primary':'btn-secondary'}" onclick="setLoginProvider('jsonbin')">🌐 JSONBin</button>
+            <button id="prov-yandex" class="btn btn-sm ${cloudProvider==='yandex'&&cloudToken?'btn-primary':'btn-secondary'}" onclick="setLoginProvider('yandex')">☁️ Яндекс.Диск</button>
+          </div>
         </div>
+        
+        <div id="login-token-block" style="${cloudToken?'':'display:none;'}">
+          <label style="font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:4px;">Токен</label>
+          <input id="login-token" class="input" value="${esc(cloudToken)}" placeholder="Вставьте токен" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+          <button id="login-oauth-btn" class="btn btn-sm mt-2" style="background:var(--yellow2);color:var(--yellow);display:${cloudProvider==='yandex'?'inline-flex':'none'};" onclick="startYandexOAuth()">🔑 Получить токен через Яндекс</button>
+        </div>
+        
         <button id="login-btn" class="btn btn-primary w-full" style="justify-content:center;padding:12px;">Войти в систему</button>
       </div>
-      <div style="margin-top:16px;padding:12px;background:var(--blue2);border-radius:var(--radius);">
-        <p style="font-size:11px;color:var(--blue);">💡 Система работает локально. Для совместной работы укажите токен JSONBin.io</p>
+      
+      <div id="login-help" style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:var(--radius);font-size:11px;color:var(--text2);">
+        <details>
+          <summary style="cursor:pointer;font-weight:500;color:var(--text);margin-bottom:6px;">💡 Как получить токен?</summary>
+          <div id="login-help-content"></div>
+        </details>
       </div>
     </div>
   </div>`;
 }
+
+function updateLoginHelp() {
+  const el = $('#login-help-content');
+  if (!el) return;
+  if (cloudProvider === 'yandex') {
+    el.innerHTML = `
+      <p style="margin-bottom:6px;"><b>Для Яндекс.Диска:</b></p>
+      <ol style="padding-left:16px;line-height:1.6;">
+        <li>Перейдите на <a href="https://oauth.yandex.ru/client/new" target="_blank" style="color:var(--blue);">oauth.yandex.ru/client/new</a></li>
+        <li>Название: <code>Цезарь АИС</code> (любое)</li>
+        <li>Платформа: <b>Веб-сервисы</b></li>
+        <li>Redirect URI: <code id="redirect-uri-hint" style="background:var(--bg2);padding:2px 4px;border-radius:3px;cursor:pointer;" onclick="navigator.clipboard.writeText(this.textContent)">${window.location.origin + window.location.pathname}</code> <span style="color:var(--text3);">(нажмите чтобы скопировать)</span></li>
+        <li>Права доступа: <b>Яндекс.Диск: чтение и запись</b></li>
+        <li>Нажмите «Создать»</li>
+        <li>Скопируйте <b>Client ID</b> и вставьте его в настройках</li>
+        <li>Нажмите кнопку «🔑 Получить токен через Яндекс»</li>
+        <li>Подтвердите доступ — токен сохранится автоматически</li>
+      </ol>
+      <p style="margin-top:6px;color:var(--text3);">Если нет Client ID — вставьте токен вручную (получить на <a href="https://oauth.yandex.ru" target="_blank" style="color:var(--blue);">oauth.yandex.ru</a>)</p>
+    `;
+  } else if (cloudProvider === 'jsonbin') {
+    el.innerHTML = `
+      <p style="margin-bottom:6px;"><b>Для JSONBin.io:</b></p>
+      <ol style="padding-left:16px;line-height:1.6;">
+        <li>Зарегистрируйтесь на <a href="https://jsonbin.io" target="_blank" style="color:var(--blue);">jsonbin.io</a></li>
+        <li>Перейдите в <a href="https://jsonbin.io/api-access" target="_blank" style="color:var(--blue);">API Access</a></li>
+        <li>Скопируйте <b>X-Master-Key</b></li>
+        <li>Вставьте его в поле «Токен»</li>
+      </ol>
+    `;
+  } else {
+    el.innerHTML = `
+      <p>Система работает полностью локально. Данные сохраняются в браузере.</p>
+      <p style="margin-top:4px;">Для совместной работы нескольких пользователей подключите облако.</p>
+    `;
+  }
+}
+
+window.setLoginProvider = function(prov) {
+  cloudProvider = prov;
+  localStorage.setItem('caesar_cloud_provider', prov);
+  if (prov === 'local') {
+    cloudToken = '';
+    localStorage.removeItem(TOKEN_KEY);
+    syncStatus = 'disconnected';
+  }
+  render();
+  setTimeout(updateLoginHelp, 50);
+};
+
+window.startYandexOAuth = function() {
+  const url = getYandexOAuthUrl();
+  if (url) window.location.href = url;
+};
 
 function bindLogin() {
   const btn = $('#login-btn');
@@ -350,8 +515,15 @@ function bindLogin() {
     if (!name) return;
     currentUser = name;
     localStorage.setItem(USER_KEY, name);
-    const token = tokenInput.value.replace(/[^\x20-\x7E]/g,'').trim();
-    if (token) { cloudToken = token; localStorage.setItem(TOKEN_KEY, token); syncStatus='connected'; }
+    if (tokenInput) {
+      const token = tokenInput.value.replace(/[^\x20-\x7E]/g,'').trim();
+      if (token) { 
+        cloudToken = token; 
+        localStorage.setItem(TOKEN_KEY, token); 
+        localStorage.setItem('caesar_cloud_provider', cloudProvider);
+        syncStatus='connected'; 
+      }
+    }
     addLog('Вход в систему', 'Система', `Пользователь ${name} вошёл`);
     startSync();
     render();
@@ -359,8 +531,19 @@ function bindLogin() {
   
   btn.onclick = doLogin;
   nameInput.onkeydown = e => { if(e.key==='Enter') doLogin(); };
-  tokenInput.onkeydown = e => { if(e.key==='Enter') doLogin(); };
+  if (tokenInput) tokenInput.onkeydown = e => { if(e.key==='Enter') doLogin(); };
   nameInput.focus();
+  
+  // Показать/скрыть блок токена
+  const tokenBlock = $('#login-token-block');
+  if (tokenBlock) tokenBlock.style.display = cloudProvider === 'local' ? 'none' : 'block';
+  
+  // Показать/скрыть кнопку OAuth
+  const oauthBtn = $('#login-oauth-btn');
+  if (oauthBtn) oauthBtn.style.display = cloudProvider === 'yandex' ? 'inline-flex' : 'none';
+  
+  // Обновить help
+  setTimeout(updateLoginHelp, 50);
 }
 
 // ── Main App ──
@@ -1683,15 +1866,59 @@ function renderSettings() {
     
     <div class="card mb-4">
       <h3 class="font-medium mb-3" style="color:var(--text);">☁️ Облачная синхронизация</h3>
-      <p class="text-xs mb-2" style="color:var(--text3);">API ключ JSONBin.io для совместной работы</p>
-      <div class="flex gap-2">
-        <input id="set-token" class="input" value="${esc(cloudToken)}" placeholder="X-Master-Key" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+      <p class="text-xs mb-3" style="color:var(--text3);">Выберите провайдер для совместной работы нескольких пользователей</p>
+      
+      <div class="flex gap-2 mb-3" style="flex-wrap:wrap;">
+        <button class="btn btn-sm ${cloudProvider==='local'?'btn-primary':'btn-secondary'}" onclick="setCloudProvider('local')">🏠 Локально</button>
+        <button class="btn btn-sm ${cloudProvider==='jsonbin'?'btn-primary':'btn-secondary'}" onclick="setCloudProvider('jsonbin')">🌐 JSONBin.io</button>
+        <button class="btn btn-sm ${cloudProvider==='yandex'?'btn-primary':'btn-secondary'}" onclick="setCloudProvider('yandex')">☁️ Яндекс.Диск</button>
+      </div>
+      
+      ${cloudProvider !== 'local' ? `
+      <div class="flex gap-2 mb-2">
+        <input id="set-token" class="input" value="${esc(cloudToken)}" placeholder="${cloudProvider==='yandex'?'OAuth токен Яндекс.Диска':'X-Master-Key (JSONBin)'}" style="font-family:'JetBrains Mono',monospace;font-size:12px;flex:1;">
         <button class="btn btn-primary" onclick="saveCloudToken()">Сохранить</button>
       </div>
-      <div class="flex items-center gap-2 mt-2">
-        <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'}"></span>
-        <span class="text-xs" style="color:var(--text3);">${syncStatus==='connected'?'Подключено':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка':'Локальный режим'}</span>
+      ` : ''}
+      
+      ${cloudProvider === 'yandex' ? `
+      <div style="padding:12px;background:var(--yellow2);border-radius:var(--radius);margin-bottom:8px;">
+        <p style="font-size:12px;font-weight:500;color:var(--yellow);margin-bottom:8px;">🔑 Как получить токен Яндекс.Диска:</p>
+        <ol style="font-size:11px;color:var(--text2);padding-left:16px;line-height:1.7;">
+          <li><b>Зарегистрируйте приложение</b> на <a href="https://oauth.yandex.ru/client/new" target="_blank" style="color:var(--blue);">oauth.yandex.ru/client/new</a></li>
+          <li><b>Название:</b> любое, например «Цезарь АИС»</li>
+          <li><b>Платформа:</b> Веб-сервисы</li>
+          <li><b>Redirect URI:</b> <code style="background:var(--bg2);padding:1px 4px;border-radius:3px;cursor:pointer;" onclick="navigator.clipboard.writeText(this.textContent);this.style.background='var(--green2)';">${window.location.origin + window.location.pathname}</code> <span style="color:var(--text3);">(нажмите чтобы скопировать)</span></li>
+          <li><b>Права (Scopes):</b> отметьте <b>«Яндекс.Диск: запись»</b></li>
+          <li>Нажмите <b>«Создать»</b></li>
+          <li>Скопируйте <b>Client ID</b> (набор цифр) и вставьте ниже:</li>
+        </ol>
+        <div class="flex gap-2 mt-2">
+          <input id="yandex-client-id" class="input" value="${esc(localStorage.getItem('caesar_yandex_client_id')||'')}" placeholder="Вставьте Client ID" style="font-family:'JetBrains Mono',monospace;font-size:12px;flex:1;">
+          <button class="btn btn-sm btn-secondary" onclick="localStorage.setItem('caesar_yandex_client_id',$('#yandex-client-id').value);alert('Client ID сохранён');">Сохранить ID</button>
+        </div>
+        <button class="btn btn-sm mt-2" style="background:var(--yellow);color:#fff;" onclick="startYandexOAuthFromSettings()">🔐 Авторизоваться через Яндекс</button>
+        <p style="font-size:10px;color:var(--text3);margin-top:6px;">После авторизации вы будете возвращены сюда, а токен сохранится автоматически.</p>
       </div>
+      ` : ''}
+      
+      ${cloudProvider === 'jsonbin' ? `
+      <div style="padding:12px;background:var(--blue2);border-radius:var(--radius);margin-bottom:8px;">
+        <p style="font-size:12px;font-weight:500;color:var(--blue);margin-bottom:6px;">🌐 Как получить ключ JSONBin:</p>
+        <ol style="font-size:11px;color:var(--text2);padding-left:16px;line-height:1.7;">
+          <li>Зарегистрируйтесь на <a href="https://jsonbin.io" target="_blank" style="color:var(--blue);">jsonbin.io</a> (бесплатно)</li>
+          <li>Перейдите в раздел <a href="https://jsonbin.io/api-access" target="_blank" style="color:var(--blue);">API Access</a></li>
+          <li>Скопируйте <b>X-Master-Key</b> (начинается с <code>$2a$10$...</code>)</li>
+          <li>Вставьте его в поле выше и нажмите «Сохранить»</li>
+        </ol>
+      </div>
+      ` : ''}
+      
+      <div class="flex items-center gap-2 mt-2">
+        <span class="status-dot ${syncStatus==='connected'?'status-green':syncStatus==='syncing'?'status-yellow':syncStatus==='error'?'status-red':'status-gray'} ${syncStatus==='syncing'?'pulse':''}"></span>
+        <span class="text-xs" style="color:var(--text3);">${syncStatus==='connected'?'Подключено ('+cloudProvider+')':syncStatus==='syncing'?'Синхронизация...':syncStatus==='error'?'Ошибка соединения':'Локальный режим (данные только в этом браузере)'}</span>
+      </div>
+      ${cloudToken ? `<button class="btn btn-sm btn-danger mt-2" onclick="if(confirm('Отключить облако? Данные останутся локально.')){cloudToken='';localStorage.removeItem('${TOKEN_KEY}');syncStatus='disconnected';if(syncTimer){clearInterval(syncTimer);syncTimer=null;}render();}">Отключить облако</button>` : ''}
     </div>
     
     <div class="card mb-4">
@@ -1728,10 +1955,28 @@ window.saveCloudToken = function() {
   const token = $('#set-token').value.replace(/[^\x20-\x7E]/g,'').trim();
   cloudToken = token;
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem('caesar_cloud_provider', cloudProvider);
   syncStatus = token ? 'connected' : 'disconnected';
   if (token) startSync();
   else if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
   render();
+};
+
+window.setCloudProvider = function(prov) {
+  cloudProvider = prov;
+  localStorage.setItem('caesar_cloud_provider', prov);
+  if (prov === 'local') {
+    cloudToken = '';
+    localStorage.removeItem(TOKEN_KEY);
+    syncStatus = 'disconnected';
+    if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  }
+  render();
+};
+
+window.startYandexOAuthFromSettings = function() {
+  const url = getYandexOAuthUrl();
+  if (url) window.location.href = url;
 };
 
 window.exportJSON = function() {
@@ -1834,6 +2079,8 @@ window.closeModal = function() {
 };
 
 // ── Init ──
+// Проверяем возврат с OAuth Яндекса (токен в URL hash)
+checkYandexOAuthCallback();
 loadData();
 render();
 if (currentUser && cloudToken) startSync();
